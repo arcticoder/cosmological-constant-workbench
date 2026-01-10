@@ -17,6 +17,9 @@ pip install -e .
 ccw-baseline --h0 67.4 --omega-lambda 0.6889 --cutoff planck
 ccw-baseline --cutoff electroweak
 ccw-baseline --cutoff 1TeV
+
+# Sweep toy mechanism parameters (writes JSON + CSV)
+ccw-sweep --mechanism cpl --z 0,1,2 --grid-json '[{"w0":-1.0,"wa":0.2},{"w0":-0.9,"wa":0.0}]'
 ```
 
 ## What this repo is (and isn’t)
@@ -34,3 +37,7 @@ ccw-baseline --cutoff 1TeV
 ## Next steps
 
 See `docs/TASKS.md` for the working task list.
+
+## Provenance
+
+See `docs/PROVENANCE.md` for equation provenance and scope.

@@ -28,6 +28,7 @@ dev = ["pytest>=7.4"]
 
 [project.scripts]
 ccw-baseline = "ccw.cli:main"
+ccw-sweep = "ccw.cli_sweep:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
