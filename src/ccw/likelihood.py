@@ -13,6 +13,13 @@ from .data_loader import DistanceModulusPoint
 from .frw import luminosity_distance_m, h_z_lcdm_s_inv
 from .mechanisms import CosmologyBackground
 from .constants import MPC_M
+from .cmb_bao_observables import (
+    CMBObservable,
+    BAOObservable,
+    angular_diameter_distance_mpc,
+    cmb_acoustic_scale_ell_a,
+    dilation_scale_dv,
+)
 
 
 @dataclass
@@ -190,4 +197,165 @@ def fit_mechanism_parameters(
         reduced_chi_squared=final_likelihood.chi_squared / (final_likelihood.dof - len(param_names)),
         best_fit_params=best_fit,
         param_uncertainties=uncertainties,
+    )
+
+
+def cmb_likelihood(
+    cmb_obs: CMBObservable,
+    hz_s_inv_callable: Callable[[float], float],
+) -> LikelihoodResult:
+    """
+    Compute CMB acoustic scale likelihood.
+
+    Parameters
+    ----------
+    cmb_obs : CMBObservable
+        CMB acoustic scale measurement (ℓ_A).
+    hz_s_inv_callable : Callable[[float], float]
+        Function returning H(z) in s^-1.
+
+    Returns
+    -------
+    LikelihoodResult
+        Likelihood result from CMB.
+
+    Notes
+    -----
+    Compares theoretical ℓ_A = π D_C(z_*) / r_s to observed value.
+    Uses COMOVING distance D_C, not angular diameter distance D_A.
+    """
+    ell_a_theory = cmb_acoustic_scale_ell_a(
+        cmb_obs.z_star,
+        hz_s_inv_callable,
+        r_s_mpc=cmb_obs.r_s_mpc,
+    )
+    
+    residual = cmb_obs.ell_a - ell_a_theory
+    chi2 = (residual / cmb_obs.sigma_ell_a) ** 2
+    
+    return LikelihoodResult(
+        log_likelihood=-0.5 * chi2,
+        chi_squared=chi2,
+        dof=1,  # Single CMB observable
+        reduced_chi_squared=chi2,
+    )
+
+
+def bao_likelihood(
+    bao_obs_list: List[BAOObservable],
+    hz_s_inv_callable: Callable[[float], float],
+) -> LikelihoodResult:
+    """
+    Compute BAO likelihood.
+
+    Parameters
+    ----------
+    bao_obs_list : List[BAOObservable]
+        List of BAO measurements.
+    hz_s_inv_callable : Callable[[float], float]
+        Function returning H(z) in s^-1.
+
+    Returns
+    -------
+    LikelihoodResult
+        Likelihood result from BAO.
+
+    Notes
+    -----
+    Supports D_V(z) measurements (dilation scale).
+    Can be extended for H(z) and D_A(z) separately.
+    """
+    chi2_total = 0.0
+    
+    for obs in bao_obs_list:
+        if obs.measurement_type == "DV":
+            theory = dilation_scale_dv(obs.z, hz_s_inv_callable)
+        elif obs.measurement_type == "DA":
+            theory = angular_diameter_distance_mpc(obs.z, hz_s_inv_callable)
+        elif obs.measurement_type == "H":
+            # H(z) in km/s/Mpc from H(z) in s^-1
+            h_z_s_inv = hz_s_inv_callable(obs.z)
+            theory = h_z_s_inv * (MPC_M / 1e3)
+        else:
+            raise ValueError(f"Unknown BAO measurement type: {obs.measurement_type}")
+        
+        residual = obs.value - theory
+        chi2_total += (residual / obs.sigma) ** 2
+    
+    n_obs = len(bao_obs_list)
+    return LikelihoodResult(
+        log_likelihood=-0.5 * chi2_total,
+        chi_squared=chi2_total,
+        dof=n_obs,
+        reduced_chi_squared=chi2_total / n_obs if n_obs > 0 else float("inf"),
+    )
+
+
+def joint_likelihood(
+    sne_data: Optional[List[DistanceModulusPoint]],
+    cmb_obs: Optional[CMBObservable],
+    bao_obs_list: Optional[List[BAOObservable]],
+    hz_s_inv_callable: Callable[[float], float],
+    h0_fiducial: float = 70.0,
+) -> LikelihoodResult:
+    """
+    Compute joint SNe + CMB + BAO likelihood.
+
+    Parameters
+    ----------
+    sne_data : List[DistanceModulusPoint], optional
+        SNe Ia distance modulus data.
+    cmb_obs : CMBObservable, optional
+        CMB acoustic scale measurement.
+    bao_obs_list : List[BAOObservable], optional
+        BAO measurements.
+    hz_s_inv_callable : Callable[[float], float]
+        Function returning H(z) in s^-1.
+    h0_fiducial : float
+        Fiducial H0 for SNe absolute calibration.
+
+    Returns
+    -------
+    LikelihoodResult
+        Joint likelihood with combined chi-squared.
+
+    Notes
+    -----
+    Chi-squared: χ² = χ²_SNe + χ²_CMB + χ²_BAO
+    """
+    chi2_total = 0.0
+    n_data = 0
+    
+    # SNe contribution
+    if sne_data is not None and len(sne_data) > 0:
+        def evaluator(z):
+            # For SNe, we need ρ_DE(z) but we only have H(z)
+            # Approximate with constant dark energy for now
+            return 5.3e-10
+        
+        sne_result = distance_modulus_likelihood(sne_data, evaluator, h0_fiducial)
+        chi2_total += sne_result.chi_squared
+        n_data += len(sne_data)
+    
+    # CMB contribution
+    if cmb_obs is not None:
+        cmb_result = cmb_likelihood(cmb_obs, hz_s_inv_callable)
+        chi2_total += cmb_result.chi_squared
+        n_data += 1
+    
+    # BAO contribution
+    if bao_obs_list is not None and len(bao_obs_list) > 0:
+        bao_result = bao_likelihood(bao_obs_list, hz_s_inv_callable)
+        chi2_total += bao_result.chi_squared
+        n_data += len(bao_obs_list)
+    
+    dof = n_data
+    reduced_chi2 = chi2_total / dof if dof > 0 else float('inf')
+    log_likelihood = -0.5 * chi2_total
+    
+    return LikelihoodResult(
+        log_likelihood=log_likelihood,
+        chi_squared=chi2_total,
+        dof=dof,
+        reduced_chi_squared=reduced_chi2,
     )

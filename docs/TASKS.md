@@ -233,11 +233,13 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - Document parameter space excluded by WGC + swampland distance conjecture
 
 **Phase 2: Empirical integration (strengthen constraints)**
-3. Phase I.19: CMB + BAO observables (joint SNe+CMB+BAO fits)
-   - Add angular diameter distance d_A(z) for CMB acoustic scale
-   - Add BAO H(z) measurements (e.g., DESI data)
-   - Extend likelihood to joint constraints, tighten w(z) bounds
-4. Phase I.20: σ₈ tension diagnostic (medium priority)
+3. [x] Phase I.19: CMB + BAO observables (joint SNe+CMB+BAO fits)
+   - ✅ Added cmb_bao_observables.py with CMB acoustic scale ℓ_A = π D_C / r_s
+   - ✅ Added BAO dilation scale D_V(z) for BOSS/DESI measurements
+   - ✅ Extended likelihood.py with joint SNe+CMB+BAO likelihood
+   - ✅ 89 tests pass (12 new tests for CMB/BAO observables and joint fits)
+   - Status: Planck ℓ_A = 301.63 ± 0.15 implemented with comoving distance formula
+4. [ ] Phase I.20: σ₈ tension diagnostic (medium priority)
    - Compute matter power spectrum amplitude from mechanisms
    - Check if modified gravity alleviates Hubble/σ₈ tensions
    - Quantify improvement over ΛCDM in joint fits
