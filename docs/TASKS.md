@@ -1,11 +1,12 @@
 # Task list: next steps (cosmological constant workbench)
 
-As of Jan 12, 2026:
+As of Jan 13, 2026:
 - We have **not** solved the cosmological constant problem.
 - We *have* built a reproducible baseline + toy-mechanism/sweep framework, and encoded multiple falsifiable constraints.
-- Empirical integration is underway: joint SNe + CMB + BAO likelihood is implemented and tested.
-- Growth diagnostics (σ₈ / fσ₈) are implemented as an additional discriminator.
-- Next: extend the “self-consistent solver” from algebraic closures to fully coupled ODE solvers for mechanisms that require them.
+- Empirical integration is complete: joint SNe + CMB + BAO likelihood + σ₈/fσ₈ diagnostics are tested and working.
+- Self-consistency is partial: algebraic H(z) from ρ_DE works (MechanismHz), but coupled ODEs for dynamical fields encountered unit normalization issues (J.22 BLOCKED).
+- **Priority queue for novel discovery**: (1) ~~complete J.22 coupled ODE solver~~ BLOCKED—needs dimensional analysis rework, (2) **NEXT:** add H.18 emergent gravity for tuning-free tests, (3) add I.21 GW sirens for new observables, (4) estimate J.23 backreaction for stability bounds, (5) explore K.25 LQG polymer for first-principles predictions.
+- Next immediate step: implement H.18 emergent_gravity.py (Verlinde entropic force) to test parameter-free Λ from holographic entropy.
 
 ## Status legend
 
@@ -162,6 +163,36 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - Document parameter space excluded by WGC + swampland.
 
 18. [ ] Add **emergent gravity / entropic force** toy framework:
+   - Implement Verlinde-style entropic force F = T ∇S on Hubble horizon: H² = (8πG/3) ρ - (2πG/c) H T S'.
+   - Math: Hawking temperature T ~ H/(2π), entropy S ~ Area/(4 l_P²) → effective ρ_DE ~ (c² H)/(2π G L) for horizon L ~ c/H.
+   - Target: src/ccw/mechanisms/emergent_gravity.py with `EmergentGravity` class implementing `rho_DE(z, H_z, rho_m_z)` and implicit `H_z(z, H0, Omega_m)` solver.
+   - Validation: (a) reproduces ΛCDM-like H(z) with entropic_factor tuning; (b) predicts modified growth f(z) testable via σ₈.
+   - Integration: use with sigma8_diagnostic.py to check fσ₈(z) signature; add to likelihood.py for joint fits.
+   - Files: src/ccw/mechanisms/emergent_gravity.py, tests/test_emergent_gravity.py, examples/demo_emergent_vs_lcdm.py.
+   - **Why critical**: Could provide parameter-free Λ equivalent with distinctive fσ₈(z) (stopping criterion 2).
+
+18.legacy [ ] Add **emergent gravity / entropic force** toy framework (OLD VERSION):
+   - Implement Verlinde-style entropic force F = T ∇S on Hubble horizon: H² = (8πG/3) ρ - (2πG/c) H T S'.
+   - Math: Hawking temperature T ~ H/(2π), entropy S ~ Area/(4 l_P²) → effective ρ_DE ~ (c² H)/(2π G L) for horizon L ~ c/H.
+   - Target: src/ccw/mechanisms/emergent_gravity.py with `EmergentGravity` class implementing `rho_DE(z, H_z, rho_m_z)` and implicit `H_z(z, H0, Omega_m)` solver.
+   - Validation: (a) reproduces ΛCDM-like H(z) with entropic_factor tuning; (b) predicts modified growth f(z) testable via σ₈.
+   - Integration: use with sigma8_diagnostic.py to check fσ₈(z) signature; add to likelihood.py for joint fits.
+   - Files: src/ccw/mechanisms/emergent_gravity.py, tests/test_emergent_gravity.py, examples/demo_emergent_vs_lcdm.py.
+   - **Why critical**: Could provide parameter-free Λ equivalent with distinctive fσ₈(z) (stopping criterion 2).
+
+## Phase H.legacy — Prior deep theory (completed)
+
+16.old [x] Implement **trans-Planckian censorship conjecture (TCC)** constraints:
+   - Encode TCC bound on expansion history: $H \lesssim \Lambda_{TCC}$ with $\Lambda_{TCC} \sim 10^{-12}$ GeV.
+   - Check if current H(z) evolution satisfies TCC over cosmic history.
+   - Explore tension between TCC and eternal inflation.
+
+17. [x] Implement **weak gravity conjecture (WGC)** consistency checks:
+   - For scalar field mechanisms, check WGC bound on mass vs coupling.
+   - Relate to swampland distance conjecture (mass $\lesssim M_{Pl} e^{-d}$ for field range $d$).
+   - Document parameter space excluded by WGC + swampland.
+
+18. [ ] Add **emergent gravity / entropic force** toy framework:
    - Implement Verlinde-style entropic force ($F = T \nabla S$) on Hubble horizon.
    - Derive modified Friedmann equation from holographic entanglement entropy.
    - Test if emergent gravity can reproduce ΛCDM without Λ.
@@ -181,23 +212,37 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - Quantify improvement over ΛCDM in joint fits.
 
 21. [ ] Add **gravitational wave standard sirens** (mock data):
-   - Generate mock GW luminosity distance measurements.
-   - Test if mechanisms with varying $G_{eff}(z)$ or modified gravity are distinguishable.
+   - Implement GW luminosity distance: d_L^GW(z) = d_L^EM(z) / √(G_eff(z)/G) for mechanisms with running G or modified propagation.
+   - Math: GW likelihood χ² = Σ [(d_L^GW,obs - d_L^GW,model(z)) / σ]².
+   - Target: src/ccw/gw_observables.py with `gw_luminosity_distance(z, hz_func, G_eff_func)` and `gw_likelihood(gw_data, hz_func, G_eff_func)`.
+   - Mock data: LIGO/Virgo-like z ~ [0.01-0.5], σ ~ 10-20% on d_L.
+   - Integration: extend joint_likelihood to include GW term; use with emergent gravity (G_eff from entropy) or scalar-tensor (conformal coupling).
+   - Validation: (a) GW χ² = 0 for perfect ΛCDM match; (b) GW-EM tension if G_eff ≠ 1.
+   - Files: src/ccw/gw_observables.py, tests/test_gw_observables.py, update examples/demo_cmb_bao.py → demo_joint_all.py.
+   - **Why critical**: Could bound modified gravity via c_gw/c or provide distinctive signature (stopping criterion 2).
 
 ---
 
 ## Phase J — Self-consistency and backreaction
 
-22. [-] Implement **self-consistent cosmology solver** for mechanisms:
-   - Fixed: SNe likelihood now depends directly on provided H(z) (no hard-coded ΛCDM placeholder).
-   - Fixed: HDE is now a proper `Mechanism` and can be used to build H(z) via Friedmann.
-   - Next: solve coupled ODEs for mechanisms where ρ_DE depends on H or fields (beyond algebraic closures).
-   - Validate: self-consistent solution matches toy approximation for small deviations.
+22. [-] **BLOCKED** — Implement **self-consistent cosmology solver** for mechanisms:
+   - ✓ Fixed: SNe likelihood now depends directly on provided H(z) (no hard-coded ΛCDM placeholder).
+   - ✓ Fixed: HDE is now a proper `Mechanism` and can be used to build H(z) via Friedmann.
+   - ❌ **BLOCKED**: Coupled ODE solver has unit normalization issues causing numerical stiffness (see src/ccw/COUPLED_ODE_STATUS.md).
+   - Status: src/ccw/coupled_ode.py created, tests/test_coupled_ode.py 8/10 failing due to dimensionality mismatch between Planck-unit fields and SI energy densities.
+   - Blocker: Field φ (dimensionless) × c² creates huge scale factor ~10¹⁶, integration requires sub-machine-precision timesteps.
+   - **Decision**: Defer J.22 until after H.18, I.21, J.23 are working. Use algebraic MechanismHz meanwhile (acceptable approximation for most mechanisms).
+   - Files: src/ccw/coupled_ode.py (WIP), tests/test_coupled_ode.py (failing), src/ccw/COUPLED_ODE_STATUS.md (problem summary).
+   - **Why critical** (when fixed): Enables accurate tuning quantification and may reveal self-stabilization or no-go bounds.
 
 23. [ ] Add **backreaction estimates** for quantum corrections:
-   - Estimate loop corrections to effective cosmological constant from mechanism fields.
-   - Check if radiative stability is maintained (no large hierarchy regenerated).
-   - Quantify residual tuning after backreaction.
+   - Estimate one-loop corrections to V_eff(φ) from matter/scalar interactions: ΔV ~ (1/(64π²)) m(φ)⁴ ln(Λ_UV/m).
+   - Math: Field-dependent mass m(φ) = y φ (Yukawa coupling); integrate ∫ dk² k²/(k² + m²) from IR to UV cutoff Λ.
+   - Target: src/ccw/backreaction.py with `loop_correction(phi, yukawa, Lambda_UV)` and `radiative_stability_check(mechanism, bg, threshold=1.0)`.
+   - Check: flag mechanisms where max(ΔV) > ρ_Λ,observed → radiatively unstable, requires fine-tuning at loop level.
+   - Validation: (a) ΔV → 0 as yukawa → 0; (b) ΔV ∝ Λ_UV² for m ≪ Λ (quadratic divergence).
+   - Files: src/ccw/backreaction.py, tests/test_backreaction.py, add to ccw-report constraints section.
+   - **Why critical**: May prove no-go bound excluding scalar quintessence without UV protection (stopping criterion 3).
 
 24. [ ] Implement **UV completion checker**:
    - For scalar field mechanisms, check Wilsonian UV completion criteria.
@@ -206,17 +251,33 @@ Right now: **no novel discovery** suitable for a strong paper claim.
 
 ---
 
+## Phase J.5 — Novel observables and signatures
+
+21. [ ] Implement **gravitational wave standard sirens** for modified gravity tests:
+   - Add GW luminosity distance: d_L^GW(z) = d_L^EM(z) / √(G_eff(z)/G) for mechanisms with running G or modified propagation.
+   - Math: GW likelihood χ² = Σ [(d_L^GW,obs - d_L^GW,model(z)) / σ]².
+   - Target: src/ccw/gw_observables.py with `gw_luminosity_distance(z, hz_func, G_eff_func)` and `gw_likelihood(gw_data, hz_func, G_eff_func)`.
+   - Mock data: LIGO/Virgo-like z ~ [0.01-0.5], σ ~ 10-20% on d_L.
+   - Integration: extend joint_likelihood to include GW term; use with emergent gravity (G_eff from entropy) or scalar-tensor (conformal coupling).
+   - Validation: (a) GW χ² = 0 for perfect ΛCDM match; (b) GW-EM tension if G_eff ≠ 1.
+   - Files: src/ccw/gw_observables.py, tests/test_gw_observables.py, update examples/demo_cmb_bao.py → demo_joint_all.py.
+   - **Why critical**: Could bound modified gravity via c_gw/c or provide distinctive signature (stopping criterion 2).
+
 ## Phase K — LQG integration (speculative, high-effort)
 
-25. [ ] Extend **lqg-cosmological-constant-predictor** adapter to full pipeline:
+25. [ ] Initiate **polymer cosmology** corrections from LQG quantization:
+   - Add LQG-motivated ρ² corrections to Friedmann: H² = (8πG/3) ρ (1 - ρ/ρ_c) with ρ_c ~ 1/l_P³ from discrete geometry.
+   - Math: Polymer bounce at high ρ modifies early universe; solve for effective late-time Λ_eff = 3H² - 8πG ρ_m.
+   - Target: extend src/ccw/adapters/lqg.py (or create polymer_cosmology.py) with `polymer_H_z(z, H0, Omega_m, rho_c_factor)` and `polymer_effective_Lambda(z)`.
+   - Validation: (a) polymer H → ΛCDM H as ρ ≪ ρ_c; (b) compare to lqg-polymer-field-generator if available.
+   - Integration: test with cmb_bao_observables for high-z constraints (z ~ 1000+); check if Λ_eff(z=0) matches observation.
+   - Files: src/ccw/adapters/lqg.py (or polymer_cosmology.py), tests/test_polymer_cosmology.py, examples/demo_polymer_vs_lcdm.py.
+   - **Why critical**: Could yield first-principles Λ from μ₀ scale (stopping criterion 4), major breakthrough.
+
+26. [ ] Extend **lqg-cosmological-constant-predictor** adapter to full pipeline:
    - Currently: optional comparison only.
    - Upgrade: use LQG-predicted Λ as input constraint for other mechanisms.
    - Test: can LQG prediction + holographic mechanism remove c_factor tuning?
-
-26. [ ] Implement **polymer cosmology** corrections to Friedmann equation:
-   - Add LQG-motivated $\rho^2$ corrections: $H^2 = \frac{8\pi G}{3} \rho (1 - \rho/\rho_c)$.
-   - Check if polymer bounce at high $\rho$ affects late-time dark energy.
-   - Validate against lqg-polymer-field-generator outputs.
 
 27. [ ] Add **spin foam amplitude** evaluation for cosmological observables:
    - Use lqg-volume-kernel-catalog to compute transition amplitudes.
