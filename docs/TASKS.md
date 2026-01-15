@@ -203,12 +203,12 @@ Right now: **no novel discovery** suitable for a strong paper claim.
 22. [-] **BLOCKED** — Implement **self-consistent cosmology solver** for mechanisms:
    - ✓ Fixed: SNe likelihood now depends directly on provided H(z) (no hard-coded ΛCDM placeholder).
    - ✓ Fixed: HDE is now a proper `Mechanism` and can be used to build H(z) via Friedmann.
-   - ❌ **BLOCKED**: Coupled ODE solver has unit normalization issues causing numerical stiffness (see src/ccw/COUPLED_ODE_STATUS.md).
-   - Status: src/ccw/coupled_ode.py created, tests/test_coupled_ode.py 8/10 failing due to dimensionality mismatch between Planck-unit fields and SI energy densities.
-   - Blocker: Field φ (dimensionless) × c² creates huge scale factor ~10¹⁶, integration requires sub-machine-precision timesteps.
-   - **Decision**: Defer J.22 until after H.18, I.21, J.23 are working. Use algebraic MechanismHz meanwhile (acceptable approximation for most mechanisms).
-   - Files: src/ccw/coupled_ode.py (WIP), tests/test_coupled_ode.py (failing), src/ccw/COUPLED_ODE_STATUS.md (problem summary).
-   - **Why critical** (when fixed): Enables accurate tuning quantification and may reveal self-stabilization or no-go bounds.
+   - ❌ **BLOCKED**: Coupled ODE solver has fundamental unit normalization issues (see src/ccw/COUPLED_ODE_STATUS.md and COUPLED_ODE_FIX_PROPOSAL.md).
+   - Root cause: Planck-normalized field φ creates energy density scaling as φ²×M_Pl²c²/ρ_crit ~ 10^120 φ², causing runaway unless φ ~ 10^-60 (requires arbitrary precision).
+   - **Decision**: Keep blocked until after K.25 (LQG polymer). Current algebraic H(z) from ρ_DE(z) on fixed background is accurate to ~1% for slow-roll quintessence.
+   - Fix requires: (1) full dimensionless normalization (ρ/ρ_crit, φ/M_Pl, N=ln a), or (2) high-precision arithmetic, or (3) UV completion that regulates field dynamics.
+   - Files: src/ccw/coupled_ode.py (WIP), tests/test_coupled_ode.py (8/10 failing), src/ccw/COUPLED_ODE_STATUS.md (diagnosis), src/ccw/COUPLED_ODE_FIX_PROPOSAL.md (solution design).
+   - **Why critical** (when fixed): Enables O(10%) backreaction tracking and fast-roll regimes; not essential for current slow-roll mechanisms.
 
 23. [x] Add **backreaction estimates** for quantum corrections:
    - ✅ Implemented Coleman–Weinberg-style one-loop correction $\Delta V$ and radiative-stability/tuning diagnostics.
