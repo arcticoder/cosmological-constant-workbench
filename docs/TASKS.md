@@ -4,9 +4,12 @@ As of Jan 14, 2026:
 - We have **not** solved the cosmological constant problem.
 - We *have* built a reproducible baseline + toy-mechanism/sweep framework, and encoded multiple falsifiable constraints.
 - Empirical integration is complete: joint SNe + CMB + BAO + GW likelihood + σ₈/fσ₈ diagnostics are tested and working.
-- Self-consistency is partial: algebraic H(z) from ρ_DE works (MechanismHz), but coupled ODEs for dynamical fields encountered unit normalization issues (J.22 BLOCKED).
-- **Priority queue for novel discovery**: (1) ~~complete J.22 coupled ODE solver~~ BLOCKED—needs dimensional analysis rework, (2) ✅ H.18 emergent gravity DONE—parameter-free Λ from holographic entropy, (3) ✅ I.21 GW sirens DONE—constrains modified gravity via d_L^GW ≠ d_L^EM, (4) **NEXT:** estimate J.23 backreaction for stability bounds, (5) explore K.25 LQG polymer for first-principles predictions.
-- Next immediate step: implement J.23 backreaction estimates (one-loop corrections to V_eff) to identify radiatively unstable mechanisms.
+- Self-consistency is partial: algebraic H(z) from ρ_DE works (MechanismHz), but coupled ODEs for dynamical fields encountered unit normalization issues (J.22 **BLOCKED**).
+- ✅ **Phase H.18 Emergent Gravity is complete** (commit `3c1b725`): parameter-free case with $\alpha=1.0$ reproduces an effective constant $\rho_{DE}\approx\rho_\Lambda$ with $w\approx-1$, and the demo quantifies tuning via $|\alpha-1|$.
+- Limitation: emergent gravity remains **phenomenologically degenerate with flat ΛCDM** (Λ-like expansion history), so it does not yet yield a distinctive cosmological signature by itself.
+- ✅ **Phase I.21 GW standard sirens is complete**: provides a concrete signature channel for modified gravity via $d_L^{GW}\neq d_L^{EM}$ (e.g., via a running $G_{eff}(z)$), complementary to SNe/CMB/BAO.
+- ✅ **Phase J.23 backreaction / radiative stability checks are complete** at the unit-test level (one-loop-style $\Delta V$ + tuning diagnostics).
+- **Priority queue for novel discovery**: (1) unblock J.22 coupled ODE solver (units/normalization redesign), (2) integrate J.23 backreaction outputs into `ccw-report`, (3) explore K.25 LQG polymer for first-principles predictions.
 
 ## Status legend
 
@@ -162,41 +165,11 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - Relate to swampland distance conjecture (mass $\lesssim M_{Pl} e^{-d}$ for field range $d$).
    - Document parameter space excluded by WGC + swampland.
 
-18. [ ] Add **emergent gravity / entropic force** toy framework:
-   - Implement Verlinde-style entropic force F = T ∇S on Hubble horizon: H² = (8πG/3) ρ - (2πG/c) H T S'.
-   - Math: Hawking temperature T ~ H/(2π), entropy S ~ Area/(4 l_P²) → effective ρ_DE ~ (c² H)/(2π G L) for horizon L ~ c/H.
-   - Target: src/ccw/mechanisms/emergent_gravity.py with `EmergentGravity` class implementing `rho_DE(z, H_z, rho_m_z)` and implicit `H_z(z, H0, Omega_m)` solver.
-   - Validation: (a) reproduces ΛCDM-like H(z) with entropic_factor tuning; (b) predicts modified growth f(z) testable via σ₈.
-   - Integration: use with sigma8_diagnostic.py to check fσ₈(z) signature; add to likelihood.py for joint fits.
-   - Files: src/ccw/mechanisms/emergent_gravity.py, tests/test_emergent_gravity.py, examples/demo_emergent_vs_lcdm.py.
-   - **Why critical**: Could provide parameter-free Λ equivalent with distinctive fσ₈(z) (stopping criterion 2).
-
-18.legacy [ ] Add **emergent gravity / entropic force** toy framework (OLD VERSION):
-   - Implement Verlinde-style entropic force F = T ∇S on Hubble horizon: H² = (8πG/3) ρ - (2πG/c) H T S'.
-   - Math: Hawking temperature T ~ H/(2π), entropy S ~ Area/(4 l_P²) → effective ρ_DE ~ (c² H)/(2π G L) for horizon L ~ c/H.
-   - Target: src/ccw/mechanisms/emergent_gravity.py with `EmergentGravity` class implementing `rho_DE(z, H_z, rho_m_z)` and implicit `H_z(z, H0, Omega_m)` solver.
-   - Validation: (a) reproduces ΛCDM-like H(z) with entropic_factor tuning; (b) predicts modified growth f(z) testable via σ₈.
-   - Integration: use with sigma8_diagnostic.py to check fσ₈(z) signature; add to likelihood.py for joint fits.
-   - Files: src/ccw/mechanisms/emergent_gravity.py, tests/test_emergent_gravity.py, examples/demo_emergent_vs_lcdm.py.
-   - **Why critical**: Could provide parameter-free Λ equivalent with distinctive fσ₈(z) (stopping criterion 2).
-
-## Phase H.legacy — Prior deep theory (completed)
-
-16.old [x] Implement **trans-Planckian censorship conjecture (TCC)** constraints:
-   - Encode TCC bound on expansion history: $H \lesssim \Lambda_{TCC}$ with $\Lambda_{TCC} \sim 10^{-12}$ GeV.
-   - Check if current H(z) evolution satisfies TCC over cosmic history.
-   - Explore tension between TCC and eternal inflation.
-
-17. [x] Implement **weak gravity conjecture (WGC)** consistency checks:
-   - For scalar field mechanisms, check WGC bound on mass vs coupling.
-   - Relate to swampland distance conjecture (mass $\lesssim M_{Pl} e^{-d}$ for field range $d$).
-   - Document parameter space excluded by WGC + swampland.
-
 18. [x] Add **emergent gravity / entropic force** toy framework:
-   - ✅ Implemented Verlinde-style entropic force: ρ_DE = α·(1-Ω_m-Ω_r)·ρ_crit with α=1 for parameter-free.
-   - ✅ Reproduces ΛCDM without free parameters when α=1 (tuning level = 0).
-   - ✅ Files: src/ccw/mechanisms/emergent_gravity.py, tests/test_emergent_gravity.py (11/11 passing), examples/demo_emergent_vs_lcdm.py.
-   - Result: Provides tuning-free alternative to Λ, but doesn't fix CC problem (still Λ-like, w≈-1).
+   - ✅ Implemented a clean, tested implementation in src/ccw/mechanisms/emergent_gravity.py (commit `3c1b725`).
+   - ✅ Parameter-free baseline at $\alpha=1.0$ yields an effective constant $\rho_{DE}$ with $w\approx-1$ (Λ-like).
+   - ✅ Demo quantifies tuning via $|\alpha-1|$.
+   - Limitation: remains ΛCDM-degenerate (no strong distinctive signature yet).
 
 ---
 
@@ -237,14 +210,11 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - Files: src/ccw/coupled_ode.py (WIP), tests/test_coupled_ode.py (failing), src/ccw/COUPLED_ODE_STATUS.md (problem summary).
    - **Why critical** (when fixed): Enables accurate tuning quantification and may reveal self-stabilization or no-go bounds.
 
-23. [ ] Add **backreaction estimates** for quantum corrections:
-   - Estimate one-loop corrections to V_eff(φ) from matter/scalar interactions: ΔV ~ (1/(64π²)) m(φ)⁴ ln(Λ_UV/m).
-   - Math: Field-dependent mass m(φ) = y φ (Yukawa coupling); integrate ∫ dk² k²/(k² + m²) from IR to UV cutoff Λ.
-   - Target: src/ccw/backreaction.py with `loop_correction(phi, yukawa, Lambda_UV)` and `radiative_stability_check(mechanism, bg, threshold=1.0)`.
-   - Check: flag mechanisms where max(ΔV) > ρ_Λ,observed → radiatively unstable, requires fine-tuning at loop level.
-   - Validation: (a) ΔV → 0 as yukawa → 0; (b) ΔV ∝ Λ_UV² for m ≪ Λ (quadratic divergence).
-   - Files: src/ccw/backreaction.py, tests/test_backreaction.py, add to ccw-report constraints section.
-   - **Why critical**: May prove no-go bound excluding scalar quintessence without UV protection (stopping criterion 3).
+23. [x] Add **backreaction estimates** for quantum corrections:
+   - ✅ Implemented Coleman–Weinberg-style one-loop correction $\Delta V$ and radiative-stability/tuning diagnostics.
+   - ✅ Validation: ΔV → 0 as yukawa → 0; correct scaling behavior in UV-dominated regime.
+   - ✅ Files: src/ccw/backreaction.py, tests/test_backreaction.py (30/30 passing).
+   - Pending integration: add a backreaction section into `ccw-report` outputs.
 
 24. [ ] Implement **UV completion checker**:
    - For scalar field mechanisms, check Wilsonian UV completion criteria.
@@ -253,17 +223,7 @@ Right now: **no novel discovery** suitable for a strong paper claim.
 
 ---
 
-## Phase J.5 — Novel observables and signatures
 
-21. [ ] Implement **gravitational wave standard sirens** for modified gravity tests:
-   - Add GW luminosity distance: d_L^GW(z) = d_L^EM(z) / √(G_eff(z)/G) for mechanisms with running G or modified propagation.
-   - Math: GW likelihood χ² = Σ [(d_L^GW,obs - d_L^GW,model(z)) / σ]².
-   - Target: src/ccw/gw_observables.py with `gw_luminosity_distance(z, hz_func, G_eff_func)` and `gw_likelihood(gw_data, hz_func, G_eff_func)`.
-   - Mock data: LIGO/Virgo-like z ~ [0.01-0.5], σ ~ 10-20% on d_L.
-   - Integration: extend joint_likelihood to include GW term; use with emergent gravity (G_eff from entropy) or scalar-tensor (conformal coupling).
-   - Validation: (a) GW χ² = 0 for perfect ΛCDM match; (b) GW-EM tension if G_eff ≠ 1.
-   - Files: src/ccw/gw_observables.py, tests/test_gw_observables.py, update examples/demo_cmb_bao.py → demo_joint_all.py.
-   - **Why critical**: Could bound modified gravity via c_gw/c or provide distinctive signature (stopping criterion 2).
 
 ## Phase K — LQG integration (speculative, high-effort)
 
