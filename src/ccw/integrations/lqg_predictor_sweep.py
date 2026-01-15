@@ -36,6 +36,19 @@ class PredictorSweepEvaluation:
     log10_ratio: float
 
 
+TSV_HEADER = (
+    "mu_polymer\t"
+    "gamma_coefficient\t"
+    "alpha_scaling\t"
+    "volume_eigenvalue_cutoff\t"
+    "target_scale_m\t"
+    "rho_pred_j_m3\t"
+    "rho_obs_j_m3\t"
+    "ratio_pred_to_obs\t"
+    "log10_ratio\n"
+)
+
+
 def _evaluation_from_rho(
     *,
     point: PredictorSweepPoint,
@@ -97,6 +110,48 @@ def scan_points(
 
     evals.sort(key=lambda e: abs(e.log10_ratio))
     return evals[: max(0, int(top_k))]
+
+
+def evaluate_all_points(
+    points: Iterable[PredictorSweepPoint],
+    *,
+    bg: CosmologyBackground,
+    runner: Callable[[LQGPredictorFirstPrinciplesConfig], LQGPredictorFirstPrinciplesResult] = run_first_principles,
+    include_uncertainty: bool = False,
+) -> list[PredictorSweepEvaluation]:
+    """Evaluate all points (unsorted), returning full results.
+
+    This is intended for downstream analysis/plotting (e.g., paper figures).
+    """
+
+    evals: list[PredictorSweepEvaluation] = []
+    for point in points:
+        evals.append(evaluate_point(point, bg=bg, runner=runner, include_uncertainty=include_uncertainty))
+    return evals
+
+
+def write_tsv(evals: Iterable[PredictorSweepEvaluation], *, file_path: str) -> None:
+    """Write sweep evaluations to a TSV file.
+
+    The output format is stable and intended to be consumed by pgfplots
+    (or external analysis scripts).
+    """
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(TSV_HEADER)
+        for ev in evals:
+            p = ev.point.params_overrides
+            f.write(
+                f"{p.get('mu_polymer','')}\t"
+                f"{p.get('gamma_coefficient','')}\t"
+                f"{p.get('alpha_scaling','')}\t"
+                f"{p.get('volume_eigenvalue_cutoff','')}\t"
+                f"{ev.point.target_scale_m}\t"
+                f"{ev.rho_pred_j_m3:.17e}\t"
+                f"{ev.rho_obs_j_m3:.17e}\t"
+                f"{ev.ratio_pred_to_obs:.17e}\t"
+                f"{ev.log10_ratio:.17e}\n"
+            )
 
 
 def make_default_points(
