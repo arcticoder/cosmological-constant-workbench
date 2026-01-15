@@ -251,10 +251,16 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - ✅ Files: src/ccw/integrations/lqg_constrained.py, tests/test_lqg_constrained.py, examples/demo_lqg_constrained.py.
    - Result: LQG constraint can make holographic DE "natural" (c ~ O(1)) IF LQG prediction is itself natural; sequestering still requires extreme fine-tuning (~10^120).
 
-27. [ ] Add **spin foam amplitude** evaluation for cosmological observables:
-   - Use lqg-volume-kernel-catalog to compute transition amplitudes.
-   - Derive effective ρ_DE from coarse-graining spin network states.
-   - Compare to phenomenological mechanisms (ultimate first-principles test).
+27. [-] Add **spin foam amplitude** evaluation for cosmological observables:
+   - ✅ **Scaffolding complete**: toy spin-foam vacuum mechanism implemented (ρ_Λ = ρ_Pl * Ā * 10^{-X}) with horizon-entropy-motivated suppression scale.
+   - ✅ Files: src/ccw/mechanisms/spin_foam_vacuum.py, tests/test_spin_foam_vacuum.py, examples/demo_spin_foam_vacuum.py.
+   - ✅ Integration: predictor-independent constraint path (holographic_constrained_by_spin_foam, sequestering_constrained_by_spin_foam) added to lqg_constrained.py.
+   - ✅ Demo: examples/demo_spin_foam_constrained.py shows tuning quantification using spin-foam target (works without external predictor).
+   - Remaining work:
+     - Replace toy parameterization (X, Ā scan) with actual EPRL/BC vertex amplitude calculation.
+     - Use lqg-volume-kernel-catalog or su2-3nj-* repos to compute coarse-grained transition amplitudes.
+     - Derive effective ρ_DE from spin network entropy; compare to observed ρ_Λ.
+   - Status: **Toy scaffolding functional; amplitude evaluation pending** (requires significant quantum gravity formalism investment).
 
 ---
 
