@@ -11,6 +11,7 @@ from .mechanisms import (
     CPLQuintessence,
     CosmologyBackground,
     HolographicDarkEnergy,
+    LQGPolymerCosmology,
     RunningVacuumRVM,
     ScalarFieldQuintessence,
     SequesteringToy,
@@ -69,6 +70,12 @@ def evaluate_mechanism(name: str, params: Dict[str, Any], z: float, bg: Cosmolog
             rho_vac_j_m3=float(params.get("rho_vac_j_m3", 1e113)),
             rho_pt_j_m3=float(params.get("rho_pt_j_m3", 1e80)),
             f_cancel=float(params.get("f_cancel", 1e-120)),
+        )
+    elif key in {"lqg_polymer", "polymer", "polymer_cosmology"}:
+        mech = LQGPolymerCosmology(
+            rho_c_over_rho_pl=float(params.get("rho_c_over_rho_pl", 0.41)),
+            mu0_factor=float(params.get("mu0_factor", 1.0)),
+            include_lambda=bool(params.get("include_lambda", False)),
         )
     else:
         raise ValueError(f"Unknown mechanism: {name}")

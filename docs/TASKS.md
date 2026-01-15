@@ -227,13 +227,14 @@ Right now: **no novel discovery** suitable for a strong paper claim.
 
 ## Phase K — LQG integration (speculative, high-effort)
 
-25. [ ] Initiate **polymer cosmology** corrections from LQG quantization:
+25. [-] Initiate **polymer cosmology** corrections from LQG quantization:
    - Add LQG-motivated ρ² corrections to Friedmann: H² = (8πG/3) ρ (1 - ρ/ρ_c) with ρ_c ~ 1/l_P³ from discrete geometry.
    - Math: Polymer bounce at high ρ modifies early universe; solve for effective late-time Λ_eff = 3H² - 8πG ρ_m.
    - Target: extend src/ccw/adapters/lqg.py (or create polymer_cosmology.py) with `polymer_H_z(z, H0, Omega_m, rho_c_factor)` and `polymer_effective_Lambda(z)`.
    - Validation: (a) polymer H → ΛCDM H as ρ ≪ ρ_c; (b) compare to lqg-polymer-field-generator if available.
    - Integration: test with cmb_bao_observables for high-z constraints (z ~ 1000+); check if Λ_eff(z=0) matches observation.
-   - Files: src/ccw/adapters/lqg.py (or polymer_cosmology.py), tests/test_polymer_cosmology.py, examples/demo_polymer_vs_lcdm.py.
+   - Files (implemented): src/ccw/mechanisms/lqg_polymer.py, tests/test_lqg_polymer.py, examples/demo_lqg_polymer.py.
+   - Status: exploratory bookkeeping is implemented via an *effective* ρ_DE,eff(z) = -ρ(z)^2/ρ_c; this does not (yet) produce a positive, constant Λ.
    - **Why critical**: Could yield first-principles Λ from μ₀ scale (stopping criterion 4), major breakthrough.
 
 26. [ ] Extend **lqg-cosmological-constant-predictor** adapter to full pipeline:
