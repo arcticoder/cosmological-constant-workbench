@@ -4,7 +4,9 @@ import pytest
 
 from ccw.integrations.lqg_constrained import (
     holographic_constrained_by_lqg,
+    holographic_constrained_by_spin_foam,
     sequestering_constrained_by_lqg,
+    sequestering_constrained_by_spin_foam,
 )
 from ccw.integrations.lqg_predictor import lqg_predictor_available
 from ccw.mechanisms import CosmologyBackground
@@ -68,3 +70,26 @@ def test_sequestering_lqg_constrained_graceful_failure_without_predictor():
     if not lqg_predictor_available():
         assert not result.success
         assert "not available" in result.notes
+
+
+def test_holographic_spin_foam_constrained_works_without_external_predictor():
+    bg = CosmologyBackground()
+    result = holographic_constrained_by_spin_foam(bg, avg_amplitude=1.0, suppression_exponent_log10=122.0)
+    assert result.mechanism_name == "holographic_spin_foam_constrained"
+    assert result.lqg_target_rho_j_m3 > 0
+    assert "c_factor" in result.best_fit_params
+    assert result.achieved_rho_j_m3 > 0
+
+
+def test_sequestering_spin_foam_constrained_is_extremely_tuned_for_planck_vacuum():
+    bg = CosmologyBackground()
+    result = sequestering_constrained_by_spin_foam(
+        bg,
+        avg_amplitude=1.0,
+        suppression_exponent_log10=122.0,
+        rho_vac_j_m3=1e113,
+    )
+    assert result.mechanism_name == "sequestering_spin_foam_constrained"
+    assert result.lqg_target_rho_j_m3 > 0
+    assert result.residual_tuning > 100.0
+    assert not result.success

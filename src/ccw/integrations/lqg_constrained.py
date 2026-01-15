@@ -17,7 +17,13 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
-from ..mechanisms import CosmologyBackground, HolographicDarkEnergy, MechanismOutput, SequesteringToy
+from ..mechanisms import (
+    CosmologyBackground,
+    HolographicDarkEnergy,
+    MechanismOutput,
+    SequesteringToy,
+    SpinFoamVacuum,
+)
 from .lqg_predictor import LQGPredictorComparison, compare_baseline, lqg_predictor_available
 
 
@@ -50,6 +56,124 @@ class LQGConstrainedResult:
     residual_tuning: float
     success: bool
     notes: str
+
+
+def _holographic_constrained_to_target(
+    bg: CosmologyBackground,
+    *,
+    rho_target: float,
+    target_label: str,
+) -> LQGConstrainedResult:
+    if rho_target <= 0:
+        return LQGConstrainedResult(
+            mechanism_name=target_label,
+            lqg_target_rho_j_m3=rho_target,
+            best_fit_params={},
+            achieved_rho_j_m3=0.0,
+            residual_tuning=float("inf"),
+            success=False,
+            notes="Target vacuum energy density must be positive.",
+        )
+
+    # For the "hubble" cutoff closure, HolographicDarkEnergy enforces c_factor > 1.
+    c_factors = [1.01, 1.05, 1.1, 1.2, 1.5, 2.0, 3.0, 5.0, 10.0]
+    best_c = 1.0
+    best_residual = float("inf")
+
+    for c in c_factors:
+        mech = HolographicDarkEnergy(c_factor=c, cutoff_type="hubble")
+        try:
+            out = mech.evaluate(z=0.0, bg=bg)
+        except ValueError:
+            continue
+        rho_achieved = out.result.rho_de_j_m3
+        residual = abs(rho_achieved - rho_target)
+        if residual < best_residual:
+            best_residual = residual
+            best_c = c
+
+    rho_achieved = HolographicDarkEnergy(c_factor=best_c, cutoff_type="hubble").evaluate(z=0.0, bg=bg).result.rho_de_j_m3
+    residual_tuning = math.log10(abs(rho_achieved - rho_target) / rho_target)
+
+    is_natural = 0.3 <= best_c <= 3.0
+    success = is_natural and residual_tuning < 0.0
+
+    notes = (
+        f"Target: {rho_target:.3e} J/m³. "
+        f"Best c_factor: {best_c:.2f}. "
+        f"Achieved: {rho_achieved:.3e} J/m³. "
+    )
+    if is_natural:
+        notes += "c_factor is O(1) → no additional tuning beyond the target prediction."
+    else:
+        notes += f"c_factor = {best_c:.2f} is not O(1) → residual tuning remains."
+
+    return LQGConstrainedResult(
+        mechanism_name=target_label,
+        lqg_target_rho_j_m3=rho_target,
+        best_fit_params={"c_factor": best_c},
+        achieved_rho_j_m3=rho_achieved,
+        residual_tuning=residual_tuning,
+        success=success,
+        notes=notes,
+    )
+
+
+def _sequestering_constrained_to_target(
+    bg: CosmologyBackground,
+    *,
+    rho_target: float,
+    rho_vac_j_m3: float,
+    target_label: str,
+) -> LQGConstrainedResult:
+    if rho_target <= 0:
+        return LQGConstrainedResult(
+            mechanism_name=target_label,
+            lqg_target_rho_j_m3=rho_target,
+            best_fit_params={},
+            achieved_rho_j_m3=0.0,
+            residual_tuning=float("inf"),
+            success=False,
+            notes="Target vacuum energy density must be positive.",
+        )
+    if rho_vac_j_m3 <= 0:
+        return LQGConstrainedResult(
+            mechanism_name=target_label,
+            lqg_target_rho_j_m3=rho_target,
+            best_fit_params={},
+            achieved_rho_j_m3=0.0,
+            residual_tuning=float("inf"),
+            success=False,
+            notes="rho_vac_j_m3 must be positive.",
+        )
+
+    f_cancel_required = 1.0 - (rho_target / rho_vac_j_m3)
+    mech = SequesteringToy(rho_vac_j_m3=rho_vac_j_m3, rho_pt_j_m3=0.0, f_cancel=f_cancel_required)
+    rho_achieved = mech.evaluate(z=0.0, bg=bg).result.rho_de_j_m3
+
+    residual_tuning = math.log10(rho_vac_j_m3 / rho_target)
+    success = residual_tuning < 2.0
+
+    notes = (
+        f"Target: {rho_target:.3e} J/m³. "
+        f"Bare vacuum: {rho_vac_j_m3:.3e} J/m³. "
+        f"Required f_cancel: {f_cancel_required:.15f}. "
+        f"Tuning: ~10^{residual_tuning:.0f}. "
+    )
+    if success:
+        notes += "Low tuning achieved."
+    else:
+        notes += "Extreme fine-tuning remains (sequestering alone does not explain Λ)."
+
+    return LQGConstrainedResult(
+        mechanism_name=target_label,
+        lqg_target_rho_j_m3=rho_target,
+        best_fit_params={"f_cancel": f_cancel_required, "rho_vac_j_m3": rho_vac_j_m3},
+        achieved_rho_j_m3=rho_achieved,
+        residual_tuning=residual_tuning,
+        success=success,
+        notes=notes,
+    )
 
 
 def holographic_constrained_by_lqg(
@@ -95,55 +219,31 @@ def holographic_constrained_by_lqg(
     comparison = compare_baseline(h0_km_s_mpc, omega_lambda)
     rho_target = comparison.lqg_rho_j_m3
 
-    # Holographic mechanism: ρ_DE ~ c² ρ_crit ~ c² H²
-    # We need to find c_factor such that ρ_HDE(z=0) ~ rho_target
-    # Approximate: ρ_HDE ~ (3 c² / 8πG) H0²
-    # For simplicity, scan c_factor and pick the closest match
-    c_factors = [0.1, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]
-    best_c = 1.0
-    best_residual = float("inf")
-
-    for c in c_factors:
-        mech = HolographicDarkEnergy(c_factor=c, cutoff_type="hubble")
-        out = mech.evaluate(z=0.0, bg=bg)
-        rho_achieved = out.result.rho_de_j_m3
-        residual = abs(rho_achieved - rho_target)
-        if residual < best_residual:
-            best_residual = residual
-            best_c = c
-
-    # Achieved density
-    mech_best = HolographicDarkEnergy(c_factor=best_c, cutoff_type="hubble")
-    rho_achieved = mech_best.evaluate(z=0.0, bg=bg).result.rho_de_j_m3
-
-    # Residual tuning metric
-    if rho_target > 0:
-        residual_tuning = math.log10(abs(rho_achieved - rho_target) / rho_target)
-    else:
-        residual_tuning = float("inf")
-
-    # Natural-ness check: is c ~ O(1)?
-    is_natural = 0.3 <= best_c <= 3.0
-    success = is_natural and residual_tuning < 0.0  # <10x residual mismatch
-
-    notes = (
-        f"LQG target: {rho_target:.3e} J/m³. "
-        f"Best c_factor: {best_c:.2f}. "
-        f"Achieved: {rho_achieved:.3e} J/m³. "
+    return _holographic_constrained_to_target(
+        bg,
+        rho_target=rho_target,
+        target_label="holographic_lqg_constrained",
     )
-    if is_natural:
-        notes += "c_factor is O(1) → no additional tuning beyond LQG prediction."
-    else:
-        notes += f"c_factor = {best_c:.2f} is not O(1) → residual tuning remains."
 
-    return LQGConstrainedResult(
-        mechanism_name="holographic_lqg_constrained",
-        lqg_target_rho_j_m3=rho_target,
-        best_fit_params={"c_factor": best_c},
-        achieved_rho_j_m3=rho_achieved,
-        residual_tuning=residual_tuning,
-        success=success,
-        notes=notes,
+
+def holographic_constrained_by_spin_foam(
+    bg: CosmologyBackground,
+    *,
+    gamma: float = 0.2375,
+    avg_amplitude: float = 1.0,
+    suppression_exponent_log10: float = 122.0,
+) -> LQGConstrainedResult:
+    """Find holographic c_factor that matches a toy spin-foam vacuum target."""
+    rho_target = SpinFoamVacuum(
+        gamma=gamma,
+        avg_amplitude=avg_amplitude,
+        suppression_exponent_log10=suppression_exponent_log10,
+    ).rho_lambda_eff_j_m3()
+
+    return _holographic_constrained_to_target(
+        bg,
+        rho_target=rho_target,
+        target_label="holographic_spin_foam_constrained",
     )
 
 
@@ -196,42 +296,32 @@ def sequestering_constrained_by_lqg(
     comparison = compare_baseline(h0_km_s_mpc, omega_lambda)
     rho_target = comparison.lqg_rho_j_m3
 
-    # Solve for f_cancel
-    if rho_vac_j_m3 > 0:
-        f_cancel_required = 1.0 - (rho_target / rho_vac_j_m3)
-    else:
-        f_cancel_required = 0.0
-
-    # Construct mechanism
-    mech = SequesteringToy(rho_vac_j_m3=rho_vac_j_m3, rho_pt_j_m3=0.0, f_cancel=f_cancel_required)
-    rho_achieved = mech.evaluate(z=0.0, bg=bg).result.rho_de_j_m3
-
-    # Residual tuning: how much cancellation is required?
-    # Tuning ~ log10(1 / (1 - f_cancel)) = log10(ρ_vac / ρ_LQG)
-    if rho_target > 0 and rho_vac_j_m3 > 0:
-        residual_tuning = math.log10(rho_vac_j_m3 / rho_target)
-    else:
-        residual_tuning = float("inf")
-
-    success = residual_tuning < 2.0  # <100x tuning (extremely optimistic threshold)
-
-    notes = (
-        f"LQG target: {rho_target:.3e} J/m³. "
-        f"Bare vacuum: {rho_vac_j_m3:.3e} J/m³. "
-        f"Required f_cancel: {f_cancel_required:.15f}. "
-        f"Tuning: ~10^{residual_tuning:.0f}. "
+    return _sequestering_constrained_to_target(
+        bg,
+        rho_target=rho_target,
+        rho_vac_j_m3=rho_vac_j_m3,
+        target_label="sequestering_lqg_constrained",
     )
-    if success:
-        notes += "Low tuning achieved."
-    else:
-        notes += "Extreme fine-tuning remains (sequestering alone does not explain Λ)."
 
-    return LQGConstrainedResult(
-        mechanism_name="sequestering_lqg_constrained",
-        lqg_target_rho_j_m3=rho_target,
-        best_fit_params={"f_cancel": f_cancel_required, "rho_vac_j_m3": rho_vac_j_m3},
-        achieved_rho_j_m3=rho_achieved,
-        residual_tuning=residual_tuning,
-        success=success,
-        notes=notes,
+
+def sequestering_constrained_by_spin_foam(
+    bg: CosmologyBackground,
+    *,
+    gamma: float = 0.2375,
+    avg_amplitude: float = 1.0,
+    suppression_exponent_log10: float = 122.0,
+    rho_vac_j_m3: float = 1e113,
+) -> LQGConstrainedResult:
+    """Find sequestering f_cancel that matches a toy spin-foam vacuum target."""
+    rho_target = SpinFoamVacuum(
+        gamma=gamma,
+        avg_amplitude=avg_amplitude,
+        suppression_exponent_log10=suppression_exponent_log10,
+    ).rho_lambda_eff_j_m3()
+
+    return _sequestering_constrained_to_target(
+        bg,
+        rho_target=rho_target,
+        rho_vac_j_m3=rho_vac_j_m3,
+        target_label="sequestering_spin_foam_constrained",
     )

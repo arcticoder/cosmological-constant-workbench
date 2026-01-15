@@ -14,6 +14,7 @@ from .mechanisms import (
     HolographicDarkEnergy,
     LQGPolymerCosmology,
     LQGPolymerDerivedVacuum,
+    SpinFoamVacuum,
     RunningVacuumRVM,
     ScalarFieldQuintessence,
     SequesteringToy,
@@ -86,6 +87,12 @@ def evaluate_mechanism(name: str, params: Dict[str, Any], z: float, bg: Cosmolog
             alpha_entropy=float(params.get("alpha_entropy", 120.0)),
             s0=float(params.get("s0", 4.0 * math.pi)),
             prefactor_over_rho_pl=float(params.get("prefactor_over_rho_pl", 1.0)),
+        )
+    elif key in {"spin_foam_vacuum", "spinfoam", "spin_foam"}:
+        mech = SpinFoamVacuum(
+            gamma=float(params.get("gamma", 0.2375)),
+            avg_amplitude=float(params.get("avg_amplitude", 1.0)),
+            suppression_exponent_log10=float(params.get("suppression_exponent_log10", 122.0)),
         )
     else:
         raise ValueError(f"Unknown mechanism: {name}")

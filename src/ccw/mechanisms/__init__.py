@@ -13,6 +13,7 @@ from .susy_breaking import SUSYBreaking, required_m_susy_for_observed_lambda
 from .unimodular import UnimodularBookkeeping
 from .holographic_dark_energy import HolographicDarkEnergy
 from .lqg_polymer import LQGPolymerCosmology, LQGPolymerDerivedVacuum
+from .spin_foam_vacuum import SpinFoamVacuum
 
 __all__ = [
     "CosmologyBackground",
@@ -30,4 +31,5 @@ __all__ = [
     "HolographicDarkEnergy",
     "LQGPolymerCosmology",
     "LQGPolymerDerivedVacuum",
+    "SpinFoamVacuum",
 ]
