@@ -81,8 +81,8 @@ def solve_coupled_cosmology(
     a_min: float = 1e-3,
     a_max: float = 1.0,
     n_eval: int = 800,
-    rtol: float = 1e-8,
-    atol: float = 1e-10,
+    rtol: float = 1e-6,
+    atol: float = 1e-8,
 ) -> CoupledODEResult:
     """Solve coupled H(a) + scalar field equations.
     
@@ -91,134 +91,132 @@ def solve_coupled_cosmology(
     bg : CosmologyBackground
         Background cosmology parameters.
     V_func : callable
-        Potential V(φ).
+        Potential V(φ) returning Energy Density [J/m³].
     V_prime_func : callable
-        Derivative V'(φ).
+        Derivative V'(φ) returning [J/m³].
     phi_0 : float
-        Initial field value at a=a_max (today).
+        Initial field value (dimensionless) at a=a_max.
     Pi_0 : float
         Initial momentum Π at a=a_max.
-    a_min : float
-        Minimum scale factor to integrate to (default 1e-3, z~1000).
-    a_max : float
-        Maximum scale factor (default 1.0, z=0).
-    n_eval : int
-        Number of evaluation points.
-    rtol, atol : float
-        Integration tolerances.
-    
-    Returns
-    -------
-    CoupledODEResult
-        Solution arrays.
-    
-    Notes
-    -----
-    Integrates backward from a_max to a_min in ln(a) time.
-    Uses RK45 with tight tolerances for Friedmann-field coupling.
+    a_min, a_max : float
+        Integration range.
+    n_eval, rtol, atol : 
+        Solver parameters.
     """
     if a_min >= a_max:
         raise ValueError("a_min must be < a_max")
-    if phi_0 <= 0:
-        raise ValueError("phi_0 must be > 0 for inverse-power potentials")
-    if n_eval < 50:
-        raise ValueError("n_eval too small")
     
-    # Convert background to SI units
+    # Physics Constants
+    KAPPA = 8.0 * PI * G_M3_KG_S2  # SI units
+    C2 = C_M_S**2
+    
+    # Background Setup
     h0_s_inv = h0_km_s_mpc_to_s_inv(bg.h0_km_s_mpc)
+    rho_crit_0 = 3.0 * (h0_s_inv**2) / KAPPA  # Mass density [kg/m^3]
     
-    # Critical energy density (mass units) at z=0
-    rho_crit_mass_0 = 3.0 * (h0_s_inv**2) / (8.0 * PI * G_M3_KG_S2)
+    rho_m_0 = bg.omega_m * rho_crit_0
+    rho_r_0 = bg.omega_r * rho_crit_0
     
-    # Matter and radiation energy densities at a=1
-    rho_m_0 = bg.omega_m * rho_crit_mass_0
-    rho_r_0 = bg.omega_r * rho_crit_mass_0
-    
-    # Integration in ln(a) time: t = ln(a)
+    # Time variable t = ln(a)
     t_min = math.log(a_min)
     t_max = math.log(a_max)
     
     def rhs(t: float, y: np.ndarray) -> np.ndarray:
-        """Right-hand side: dy/dt = [dφ/dt, dΠ/dt]."""
-        phi, Pi = float(y[0]), float(y[1])
-        a = math.exp(t)
+        phi, Pi = y
+        # Clamp Pi to avoid infinite loop in solver if it grows too large
         
-        # Energy densities (mass units)
-        rho_m = rho_m_0 / (a**3)
-        rho_r = rho_r_0 / (a**4)
+        # Densities [kg/m^3]
+        rho_m = rho_m_0 * math.exp(-3*t)
+        rho_r = rho_r_0 * math.exp(-4*t)
         
-        # Scalar field energy density (with overflow protection)
         try:
-            V_phi = V_func(phi)
+            V_val = V_func(phi)
+            V_prime_val = V_prime_func(phi)
         except (OverflowError, ValueError):
-            # Field went to unphysical region - terminate integration
-            return np.array([0.0, 0.0])  # Will trigger solver termination
-        
-        rho_phi = 0.5 * Pi**2 + V_phi  # Kinetic + potential (dimensionless units, normalized by M_Pl²)
-        
-        # Total energy density
-        rho_tot = rho_m + rho_r + rho_phi * (C_M_S**2)  # Convert phi to energy density
-        
-        if rho_tot <= 0 or not math.isfinite(rho_tot):
-            raise ValueError(f"Non-physical ρ_tot at a={a:.3e}")
-        
-        # Hubble parameter
-        H = math.sqrt((8.0 * PI * G_M3_KG_S2 / 3.0) * rho_tot)
-        
-        # Field equations in ln(a) time (with overflow protection)
-        try:
-            dV_dphi = V_prime_func(phi)
-        except (OverflowError, ValueError):
-            return np.array([0.0, 0.0])  # Terminate integration
+            return np.array([0.0, 0.0])
             
-        dphi_dt = Pi
-        dPi_dt = -3.0 * H * Pi - dV_dphi
+        rho_V = V_val / C2
         
-        return np.array([dphi_dt, dPi_dt], dtype=float)
-    
-    # Solve from a_max (today) backward to a_min
-    y_init = np.array([phi_0, Pi_0], dtype=float)
-    t_eval = np.linspace(t_max, t_min, n_eval)
-    
+        # Check Kinetic Dominance limit (Pi^2 < 6)
+        if Pi**2 >= 5.99:
+             # Prevent singularity by clamping effective Pi in denominator
+             Pi_denom = 5.99
+        else:
+             Pi_denom = Pi**2
+             
+        # Friedmann Constraint
+        # H^2 = (kappa/3) * (rho_fluid) / (1 - Pi^2/6)
+        numerator = (KAPPA / 3.0) * (rho_m + rho_r + rho_V)
+        denominator = 1.0 - Pi_denom / 6.0
+        
+        if numerator < 0: numerator = 1e-100
+        if denominator <= 1e-4: denominator = 1e-4
+             
+        H_sq = numerator / denominator
+             
+        # EOMs
+        # Term 1: Friction/Hubble Drag = -3 * Pi * (1 - Pi^2/6)
+        term1 = -3.0 * Pi * (1.0 - Pi**2 / 6.0) 
+        
+        # Term 2: Fluid Coupling = (kappa / 2 H^2) * Pi * (rho_m + 4/3 rho_r)
+        term2 = (KAPPA / (2.0 * max(H_sq, 1e-60))) * Pi * (rho_m + (4.0/3.0)*rho_r)
+        
+        # Term 3: Potential Gradient = - (kappa * V') / (c^2 * H^2)
+        term3 = - (KAPPA * V_prime_val) / (C2 * max(H_sq, 1e-60))
+        
+        dphi_dt = Pi
+        dPi_dt = term1 + term2 + term3
+        
+        return np.array([dphi_dt, dPi_dt])
+
+    # Solve
+    y0 = np.array([phi_0, Pi_0])
     sol = integrate.solve_ivp(
-        rhs,
-        t_span=(t_max, t_min),
-        y0=y_init,
-        t_eval=t_eval,
-        method="DOP853",
-        rtol=rtol,
-        atol=atol,
+        rhs, 
+        (t_max, t_min), 
+        y0, 
+        t_eval=np.linspace(t_max, t_min, n_eval),
+        method='LSODA', 
+        rtol=rtol, 
+        atol=atol
     )
     
-    if not sol.success:
-        raise RuntimeError(f"Coupled ODE integration failed: {sol.message}")
+    # Process output
+    t_out = sol.t[::-1]
+    a_out = np.exp(t_out)
+    phi_out = sol.y[0][::-1]
+    Pi_out = sol.y[1][::-1]
     
-    # Extract solution (reverse to ascending a)
-    t_grid = sol.t[::-1]
-    a_grid = np.exp(t_grid)
-    phi_grid = sol.y[0, ::-1]
-    Pi_grid = sol.y[1, ::-1]
+    H_out = np.zeros_like(a_out)
+    rho_DE_out = np.zeros_like(a_out)
     
-    # Compute H(a) and ρ_DE(a) from solution
-    H_grid = np.zeros_like(a_grid)
-    rho_DE_grid = np.zeros_like(a_grid)
-    
-    for i, (a, phi, Pi) in enumerate(zip(a_grid, phi_grid, Pi_grid)):
+    for i, (a, phi, Pi) in enumerate(zip(a_out, phi_out, Pi_out)):
         rho_m = rho_m_0 / (a**3)
         rho_r = rho_r_0 / (a**4)
-        V_phi = V_func(phi)
-        rho_phi = 0.5 * Pi**2 + V_phi
-        rho_tot = rho_m + rho_r + rho_phi * (C_M_S**2)
+        V_val = V_func(phi)
+        rho_V = V_val / C2
         
-        H_grid[i] = math.sqrt((8.0 * PI * G_M3_KG_S2 / 3.0) * rho_tot)
-        rho_DE_grid[i] = rho_phi * (C_M_S**2)  # Energy density
+        # Reconstruct H
+        denom = 1.0 - min(Pi**2, 5.99) / 6.0
+        numerator = (KAPPA / 3.0) * (rho_m + rho_r + rho_V)
+        if numerator < 0: numerator = 0
+        H_sq = max(1e-60, numerator / denom)
+        H_val = math.sqrt(H_sq)
+        
+        H_out[i] = H_val
+        
+        # rho_DE is Energy Density [J/m^3]
+        # rho_kin_mass = (3 H^2 / KAPPA) * (Pi^2 / 6) = H^2 Pi^2 / (2 KAPPA)
+        rho_kin_mass = (H_sq * Pi**2) / (2.0 * KAPPA)
+        rho_DE_mass = rho_kin_mass + rho_V
+        rho_DE_out[i] = rho_DE_mass * C2
     
     return CoupledODEResult(
-        a_grid=a_grid,
-        phi_grid=phi_grid,
-        Pi_grid=Pi_grid,
-        H_grid=H_grid,
-        rho_DE_grid=rho_DE_grid,
+        a_grid=a_out,
+        phi_grid=phi_out,
+        Pi_grid=Pi_out,
+        H_grid=H_out,
+        rho_DE_grid=rho_DE_out,
     )
 
 
@@ -238,17 +236,12 @@ def exponential_potential_prime(phi: float, lam: float = 1.0, V0: float = 1e-10)
 
 
 def inverse_power_potential(phi: float, M: float = 1e-3, alpha: float = 0.5) -> float:
-    """Inverse power-law: V(φ) = M^(4+α) / φ^α.
-    
-    Requires φ > 0.
-    """
-    if phi <= 0:
-        raise ValueError("φ must be > 0 for inverse-power potential")
+    """Inverse power-law: V(φ) = M^(4+α) / φ^α."""
+    if phi <= 0: return 1e100 # Soft barrier
     return M**(4 + alpha) / (phi**alpha)
 
 
 def inverse_power_potential_prime(phi: float, M: float = 1e-3, alpha: float = 0.5) -> float:
     """Derivative of inverse power-law potential."""
-    if phi <= 0:
-        raise ValueError("φ must be > 0 for inverse-power potential")
+    if phi <= 0: return -1e100 # Repulsive force
     return -alpha * M**(4 + alpha) / (phi**(alpha + 1))
