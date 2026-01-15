@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import math
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -12,6 +13,7 @@ from .mechanisms import (
     CosmologyBackground,
     HolographicDarkEnergy,
     LQGPolymerCosmology,
+    LQGPolymerDerivedVacuum,
     RunningVacuumRVM,
     ScalarFieldQuintessence,
     SequesteringToy,
@@ -76,6 +78,14 @@ def evaluate_mechanism(name: str, params: Dict[str, Any], z: float, bg: Cosmolog
             rho_c_over_rho_pl=float(params.get("rho_c_over_rho_pl", 0.41)),
             mu0_factor=float(params.get("mu0_factor", 1.0)),
             include_lambda=bool(params.get("include_lambda", False)),
+        )
+    elif key in {"lqg_polymer_vacuum", "polymer_vacuum", "lqc_vacuum"}:
+        mech = LQGPolymerDerivedVacuum(
+            rho_c_over_rho_pl=float(params.get("rho_c_over_rho_pl", 0.41)),
+            mu0_factor=float(params.get("mu0_factor", 1.0)),
+            alpha_entropy=float(params.get("alpha_entropy", 120.0)),
+            s0=float(params.get("s0", 4.0 * math.pi)),
+            prefactor_over_rho_pl=float(params.get("prefactor_over_rho_pl", 1.0)),
         )
     else:
         raise ValueError(f"Unknown mechanism: {name}")

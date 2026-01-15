@@ -12,7 +12,7 @@ from .sequestering import SequesteringToy
 from .susy_breaking import SUSYBreaking, required_m_susy_for_observed_lambda
 from .unimodular import UnimodularBookkeeping
 from .holographic_dark_energy import HolographicDarkEnergy
-from .lqg_polymer import LQGPolymerCosmology
+from .lqg_polymer import LQGPolymerCosmology, LQGPolymerDerivedVacuum
 
 __all__ = [
     "CosmologyBackground",
@@ -29,4 +29,5 @@ __all__ = [
     "UnimodularBookkeeping",
     "HolographicDarkEnergy",
     "LQGPolymerCosmology",
+    "LQGPolymerDerivedVacuum",
 ]

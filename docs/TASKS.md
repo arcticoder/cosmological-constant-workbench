@@ -233,8 +233,12 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - Target: extend src/ccw/adapters/lqg.py (or create polymer_cosmology.py) with `polymer_H_z(z, H0, Omega_m, rho_c_factor)` and `polymer_effective_Lambda(z)`.
    - Validation: (a) polymer H → ΛCDM H as ρ ≪ ρ_c; (b) compare to lqg-polymer-field-generator if available.
    - Integration: test with cmb_bao_observables for high-z constraints (z ~ 1000+); check if Λ_eff(z=0) matches observation.
-   - Files (implemented): src/ccw/mechanisms/lqg_polymer.py, tests/test_lqg_polymer.py, examples/demo_lqg_polymer.py.
-   - Status: exploratory bookkeeping is implemented via an *effective* ρ_DE,eff(z) = -ρ(z)^2/ρ_c; this does not (yet) produce a positive, constant Λ.
+    - Files (implemented): src/ccw/mechanisms/lqg_polymer.py, tests/test_lqg_polymer.py, examples/demo_lqg_polymer.py.
+    - Files (extended toy): tests/test_lqg_polymer_vacuum.py, examples/demo_lqg_polymer_vacuum.py.
+    - Status: exploratory bookkeeping is implemented via an *effective* ρ_DE,eff(z) = -ρ(z)^2/ρ_c; this does not (yet) produce a positive, constant Λ.
+    - Extension (heuristic): optional constant-like term ρ_Λ,LQG = ρ_Pl * prefactor * exp(-S_bounce/α) with S_bounce ∝ μ0^2.
+       - Purpose: quantify whether an entropy-suppressed hierarchy can land near observed ρ_Λ,0 and how sensitive/tuned it is.
+       - Not a first-principles derivation; parameters (α, prefactor, μ0) are scan knobs.
    - **Why critical**: Could yield first-principles Λ from μ₀ scale (stopping criterion 4), major breakthrough.
 
 26. [ ] Extend **lqg-cosmological-constant-predictor** adapter to full pipeline:

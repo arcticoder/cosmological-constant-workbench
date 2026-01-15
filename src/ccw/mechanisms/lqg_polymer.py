@@ -82,6 +82,84 @@ def lqc_critical_density_j_m3(
     return (rho_c_over_rho_pl * rho_pl) / (mu0_factor**2)
 
 
+def toy_bounce_entropy(
+    *,
+    mu0_factor: float,
+    s0: float = 4.0 * PI,
+) -> float:
+    """Toy bounce entropy proxy S_bounce (dimensionless).
+
+    This is a deliberately simplified placeholder to support exploratory
+    "entropy suppressed vacuum" variants:
+
+      S_bounce = s0 * (μ0 / l_Pl)^2  ≡  s0 * mu0_factor^2.
+
+    Parameters
+    ----------
+    mu0_factor:
+        μ0 / l_Pl in this toy model.
+    s0:
+        Overall coefficient. Default 4π mimics an area-law scaling.
+
+    Notes
+    -----
+    This is not a first-principles LQG computation; it is a heuristic knob
+    to explore whether an exponential suppression could in principle generate
+    a small positive vacuum density.
+    """
+    if mu0_factor <= 0:
+        raise ValueError("mu0_factor must be positive")
+    if s0 <= 0:
+        raise ValueError("s0 must be positive")
+    return float(s0 * (mu0_factor**2))
+
+
+def toy_derived_vacuum_energy_density_j_m3(
+    *,
+    mu0_factor: float,
+    alpha_entropy: float = 120.0,
+    s0: float = 4.0 * PI,
+    prefactor_over_rho_pl: float = 1.0,
+) -> float:
+    """Toy positive vacuum energy density ρ_Λ,LQG in J/m^3.
+
+    Model:
+
+      ρ_Λ,LQG = (prefactor) * ρ_Pl * exp(-S_bounce / alpha_entropy)
+
+    Parameters
+    ----------
+    mu0_factor:
+        μ0 / l_Pl.
+    alpha_entropy:
+        Suppression scale (dimensionless, O(10^2)–O(10^3) in many EFT heuristics).
+        This is *not* predicted; it is a tunable toy parameter.
+    s0:
+        Coefficient in S_bounce.
+    prefactor_over_rho_pl:
+        Overall prefactor relative to ρ_Pl.
+
+    Returns
+    -------
+    float
+        Vacuum energy density in J/m^3.
+
+    Notes
+    -----
+    This is intentionally heuristic. It is useful for (a) exploring whether a
+    simple exponential hierarchy can hit ~10^-123 ρ_Pl, and (b) quantifying how
+    much tuning of (alpha_entropy, mu0_factor, prefactor) is required.
+    """
+    if alpha_entropy <= 0:
+        raise ValueError("alpha_entropy must be positive")
+    if prefactor_over_rho_pl <= 0:
+        raise ValueError("prefactor_over_rho_pl must be positive")
+
+    s_bounce = toy_bounce_entropy(mu0_factor=mu0_factor, s0=s0)
+    rho_pl = planck_energy_density_j_m3()
+    return float((prefactor_over_rho_pl * rho_pl) * math.exp(-s_bounce / alpha_entropy))
+
+
 @dataclass(frozen=True)
 class LQGPolymerCosmology:
     """Effective dark-energy mechanism capturing LQC holonomy corrections.
@@ -158,6 +236,94 @@ class LQGPolymerCosmology:
         ensure_z_nonnegative(z)
         rho_de = self.effective_rho_de_j_m3(z, bg)
 
+        return MechanismOutput(
+            result=MechanismResult(z=z, rho_de_j_m3=rho_de, w_de=None),
+            assumptions=self.describe_assumptions(),
+        )
+
+
+@dataclass(frozen=True)
+class LQGPolymerDerivedVacuum:
+    """Polymer correction plus a toy derived positive vacuum term.
+
+    This adds a constant-like positive contribution ρ_Λ,LQG on top of the
+    standard holonomy correction.
+
+    ρ_DE,total(z) = -ρ(z)^2/ρ_c  +  ρ_Λ,LQG
+
+    This is exploratory and should be treated as a hypothesis generator.
+    """
+
+    rho_c_over_rho_pl: float = 0.41
+    mu0_factor: float = 1.0
+
+    # Toy vacuum derivation knobs
+    alpha_entropy: float = 120.0
+    s0: float = 4.0 * PI
+    prefactor_over_rho_pl: float = 1.0
+
+    name: str = "lqg_polymer_vacuum"
+
+    def __post_init__(self) -> None:
+        if self.rho_c_over_rho_pl <= 0:
+            raise ValueError("rho_c_over_rho_pl must be positive")
+        if self.mu0_factor <= 0:
+            raise ValueError("mu0_factor must be positive")
+        if self.alpha_entropy <= 0:
+            raise ValueError("alpha_entropy must be positive")
+        if self.s0 <= 0:
+            raise ValueError("s0 must be positive")
+        if self.prefactor_over_rho_pl <= 0:
+            raise ValueError("prefactor_over_rho_pl must be positive")
+
+    def rho_c_j_m3(self) -> float:
+        return lqc_critical_density_j_m3(rho_c_over_rho_pl=self.rho_c_over_rho_pl, mu0_factor=self.mu0_factor)
+
+    def rho_lambda_lqg_j_m3(self) -> float:
+        return toy_derived_vacuum_energy_density_j_m3(
+            mu0_factor=self.mu0_factor,
+            alpha_entropy=self.alpha_entropy,
+            s0=self.s0,
+            prefactor_over_rho_pl=self.prefactor_over_rho_pl,
+        )
+
+    def describe_assumptions(self) -> str:
+        return (
+            "Polymer holonomy correction treated as effective density "
+            "ρ_DE,poly(z)=-ρ(z)^2/ρ_c plus a toy derived constant vacuum term "
+            "ρ_Λ,LQG=ρ_Pl*prefactor*exp(-S_bounce/α). "
+            f"Parameters: mu0_factor={self.mu0_factor:.3e}, α={self.alpha_entropy:.3g}, "
+            f"s0={self.s0:.3g}, prefactor={self.prefactor_over_rho_pl:.3g}."
+        )
+
+    def _rho_crit0_j_m3(self, bg: CosmologyBackground) -> float:
+        if bg.omega_lambda <= 0:
+            raise ValueError("omega_lambda must be > 0 to infer rho_crit0 from rho_lambda0")
+        return bg.rho_lambda0_j_m3 / bg.omega_lambda
+
+    def _rho_m_j_m3(self, z: float, bg: CosmologyBackground) -> float:
+        rho_crit0 = self._rho_crit0_j_m3(bg)
+        return bg.omega_m * rho_crit0 * (1.0 + z) ** 3
+
+    def _rho_r_j_m3(self, z: float, bg: CosmologyBackground) -> float:
+        rho_crit0 = self._rho_crit0_j_m3(bg)
+        return bg.omega_r * rho_crit0 * (1.0 + z) ** 4
+
+    def effective_rho_de_j_m3(self, z: float, bg: CosmologyBackground) -> float:
+        ensure_z_nonnegative(z)
+        rho_m = self._rho_m_j_m3(z, bg)
+        rho_r = self._rho_r_j_m3(z, bg)
+        rho = rho_m + rho_r
+
+        rho_c = self.rho_c_j_m3()
+        rho_de_poly = -(rho**2) / rho_c
+        rho_vac = self.rho_lambda_lqg_j_m3()
+
+        return float(rho_de_poly + rho_vac)
+
+    def evaluate(self, z: float, bg: CosmologyBackground) -> MechanismOutput:
+        ensure_z_nonnegative(z)
+        rho_de = self.effective_rho_de_j_m3(z, bg)
         return MechanismOutput(
             result=MechanismResult(z=z, rho_de_j_m3=rho_de, w_de=None),
             assumptions=self.describe_assumptions(),
