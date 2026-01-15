@@ -124,19 +124,6 @@ Possible escape routes include:
 (ii) a revised unit/normalization convention that changes the mapping to physical $\rho_{\rm vac}$,
 or (iii) additional dynamics (e.g., true sequestering-like cancellations~\cite{kaloper2014}) not present in the predictor.
 
-\section{Reproducibility}
-The scan is fully reproducible from the repository.
-To regenerate the scan data file used by Figure~\ref{fig:hist}:
-\begin{verbatim}
-PYTHONPATH=src python papers/lqg_cc_constraints/generate_scan_data.py
-\end{verbatim}
-This writes \texttt{papers/lqg\_cc\_constraints/data/scan\_results.tsv}.
-
-To build the PDF (regenerates data and runs \texttt{latexmk} / \texttt{pdflatex}):
-\begin{verbatim}
-bash papers/lqg_cc_constraints/build_paper.sh
-\end{verbatim}
-
 \section{Conclusion}
 Within a bounded, natural-parameter scan, the integrated LQG-inspired predictor yields vacuum energy densities that exceed the observed dark-energy density by at least $\sim 150$ orders of magnitude.
 This constitutes a stringent empirical constraint on the current formulation and motivates either new ingredients or an alternative route to spin-foam amplitude suppression if LQG is to address the cosmological-constant hierarchy.
