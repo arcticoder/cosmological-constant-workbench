@@ -257,17 +257,20 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - ✅ Integration: predictor-independent constraint path (holographic_constrained_by_spin_foam, sequestering_constrained_by_spin_foam) added to lqg_constrained.py.
    - ✅ Demo: examples/demo_spin_foam_constrained.py shows tuning quantification using spin-foam target (works without external predictor).
    - **Recommended hybrid next steps (before full vertex-sum effort):**
-     1) **Incorporate lqg-cosmological-constant-predictor outputs as targets**:
-        - Replace scanned (X, Ā) targets with predictor-derived ρ_vacuum / Λ_eff(ℓ) where possible.
-        - Sweep polymer μ(ℓ), golden-ratio modulation, and UQ settings; check whether default/natural inputs (γ≈0.237, μ₀~ℓ_Pl) land near observed ρ_Λ with O(1) constrained parameters.
-        - Emit a “naturalness verdict” and a no-go style bound if tuning remains unavoidable.
-     2) **Build a minimal EPRL/BC-like vertex prototype for small spins**:
+     1) ✅ **Incorporated lqg-cosmological-constant-predictor outputs as targets**:
+        - ✅ Added configurable first-principles run wrapper with params_overrides support in lqg_predictor.py.
+        - ✅ Added predictor-constrained functions in lqg_constrained.py (holographic_constrained_by_lqg_predictor, sequestering_constrained_by_lqg_predictor).
+        - ✅ Implemented bounded parameter scan across μ_polymer, gamma_coefficient, alpha_scaling, volume_eigenvalue_cutoff (108 evaluations).
+        - ✅ Files: lqg_predictor_sweep.py, demo_lqg_predictor_scan.py, test_lqg_predictor_sweep.py.
+        - **Empirical no-go result**: min |log10(ρ_pred/ρ_obs)| ≈ **150.7** over scanned region.
+        - **Verdict**: Predictor in bounded/natural region outputs ρ_vac ~ 10^141 J/m³ while observed ρ_Λ ~ 5.3e-10 J/m³; ~**150 orders of magnitude mismatch**. Cannot match observed scale without leaving bounded domain (extreme tuning or unit-convention reinterpretation required).
+     2) [-] **Build a minimal EPRL/BC-like vertex prototype for small spins**: for small spins**:
         - Use su2-3nj-* repos (closed forms + recurrences) to evaluate needed 3nj building blocks.
         - Compute toy 4-simplex vertex amplitude for small graphs/spins; extract an effective suppression scale and compare to X≈log10(S_H).
      3) **Parallel low-effort checks**:
         - Unblock J.22 coupled ODE normalization (dimensionless rescaling) to enable self-consistent backreaction tracking.
         - Run joint-likelihood sweeps with the current toy (X near horizon-entropy value) to confirm no hidden Δχ² preference emerges.
-   - Status: **Toy scaffolding functional; amplitude evaluation pending**.
+   - Status: **Hybrid integration complete; predictor scan shows 150 OOM mismatch → no-go constraint for current LQG formulation in natural region. Vertex-amplitude prototype remains pending (high effort).**
 
 ---
 
