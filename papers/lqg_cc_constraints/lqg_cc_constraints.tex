@@ -1,15 +1,20 @@
-\documentclass[11pt]{article}
-
-\usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb}
-\usepackage{hyperref}
+\documentclass[10pt,twocolumn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[margin=2cm]{geometry}
+\usepackage{times}
+\usepackage{microtype}
+\usepackage{url}
+\usepackage{textcomp}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 
-\title{Constraints on Loop Quantum Gravity Predictions for the Cosmological Constant\\
+\title{\Large\bfseries Constraints on Loop Quantum Gravity Predictions for the Cosmological Constant\\
 from Phenomenological Integration and Bounded Parameter Scans}
+
 % Load author config
 \IfFileExists{author_config.tex}{%
 	\input{author_config.tex}%
@@ -24,7 +29,17 @@ from Phenomenological Integration and Bounded Parameter Scans}
 \date{(Dated: January 14, 2026)}
 
 \begin{document}
+\makeatletter
+\renewcommand\@makefntext[1]{%
+	\noindent\@makefnmark\ \ignorespaces#1%
+}
+\renewcommand{\footnoterule}{\vspace{1ex}\noindent\hrule width \columnwidth\vspace{1ex}}
+\makeatother
+
 \maketitle
+\footnotetext{\noindent\textasteriskcentered\ Electronic address: \textbf{\texttt{\authoremail}}}
+\renewcommand{\thefootnote}{\arabic{footnote}}
+\sloppy
 
 \begin{abstract}
 We present a falsifiability-oriented workflow for confronting loop-quantum-gravity (LQG)-inspired vacuum-energy estimates with late-time cosmological targets.
@@ -35,17 +50,21 @@ Within this regime, the predictor does not naturally resolve the cosmological-co
 The scan therefore provides an empirical no-go style constraint on the current formulation of this class of LQG-inspired vacuum-energy calculations.
 \end{abstract}
 
-\section{Motivation}
-The cosmological-constant problem is often framed as a hierarchy between naive vacuum-energy scales and the observed late-time dark-energy density.
+\textbf{Index Terms}---Cosmological constant problem, loop quantum gravity, vacuum energy, parameter constraints, phenomenology.
+
+\section{Introduction}
+The cosmological-constant problem is often framed as a hierarchy between naive vacuum-energy scales and the observed late-time dark-energy density~\cite{weinberg1989,carroll2001}.
 A useful contribution short of a constructive solution is a rigorous bound (or no-go statement) that excludes broad parameter regions or entire formulations.
+Loop quantum gravity (LQG) approaches to the cosmological constant have proposed that polymer quantization and spin-foam amplitudes might provide natural suppression mechanisms~\cite{rovelli2004,thiemann2007}.
 
 This manuscript documents such a bound for a specific LQG-inspired vacuum-energy predictor, obtained via a reproducible integration and bounded parameter scan.
+All code, data, and build scripts are available at \url{https://github.com/DawsonInstitute/cosmological-constant-workbench}~\cite{ccw_repo}.
 
 \section{Workbench and Target Integration}
-We use a modular Python ``workbench'' that:
+We use a modular Python ``workbench''~\cite{ccw_repo} that:
 (i) defines cosmological targets and comparisons in consistent units,
 (ii) supports optional external integrations behind a guarded adapter layer, and
-(iii) provides constrained ``phenomenological'' mechanisms (e.g., holographic dark energy, sequestering) which can be tuned to a target $\rho_{\Lambda}$.
+(iii) provides constrained ``phenomenological'' mechanisms (e.g., holographic dark energy~\cite{li2004}, sequestering~\cite{kaloper2014}) which can be tuned to a target $\rho_{\Lambda}$.
 
 For the hybrid test in this work, the external LQG predictor is used solely to provide the target vacuum density (and/or an effective $\Lambda_{\rm eff}$). The question is whether the predictor is naturally near the observed scale.
 
@@ -76,8 +95,8 @@ so the smallest mismatch over the scan is still $\mathcal{O}(10^{150})$ in $\rho
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-    width=0.95\linewidth,
-    height=0.45\linewidth,
+    width=\columnwidth,
+    height=0.6\columnwidth,
     xlabel={$\Delta = \log_{10}(\rho_{\rm pred}/\rho_{\Lambda,0})$},
     ylabel={Count},
     ymajorgrids=true,
@@ -97,13 +116,13 @@ Within this scan, the predictor remains $\gtrsim 150$ orders of magnitude above 
 
 \section{Interpretation and Scope}
 This result should be interpreted as an empirical no-go statement for the predictor \emph{as implemented} and \emph{within the bounded scan domain}.
-It does not rule out all LQG approaches to $\Lambda$.
+It does not rule out all LQG approaches to $\Lambda$~\cite{rovelli2004}.
 Rather, it rules out the claim that the present formulation (polymer + phenomenological coefficients in the scanned range) naturally lands near the observed scale.
 
 Possible escape routes include:
 (i) a qualitatively different amplitude evaluation or suppression mechanism,
 (ii) a revised unit/normalization convention that changes the mapping to physical $\rho_{\rm vac}$,
-or (iii) additional dynamics (e.g., true sequestering-like cancellations) not present in the predictor.
+or (iii) additional dynamics (e.g., true sequestering-like cancellations~\cite{kaloper2014}) not present in the predictor.
 
 \section{Reproducibility}
 The scan is fully reproducible from the repository.
@@ -121,5 +140,11 @@ bash papers/lqg_cc_constraints/build_paper.sh
 \section{Conclusion}
 Within a bounded, natural-parameter scan, the integrated LQG-inspired predictor yields vacuum energy densities that exceed the observed dark-energy density by at least $\sim 150$ orders of magnitude.
 This constitutes a stringent empirical constraint on the current formulation and motivates either new ingredients or an alternative route to spin-foam amplitude suppression if LQG is to address the cosmological-constant hierarchy.
+
+\section{Acknowledgments}
+This work was supported by internal research and development funds. The authors thank the quantum gravity community for helpful discussions.
+
+\bibliographystyle{ieeetr}
+\bibliography{lqg_cc_constraints}
 
 \end{document}

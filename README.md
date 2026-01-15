@@ -1,10 +1,13 @@
 # Cosmological Constant Workbench
 
+[![GitHub](https://img.shields.io/badge/GitHub-DawsonInstitute%2Fcosmological--constant--workbench-blue)](https://github.com/DawsonInstitute/cosmological-constant-workbench)
+
 A reproducible, test-first workbench for the cosmological constant problem:
 
 - Reproduce the baseline discrepancy between naive QFT vacuum energy estimates and the observed dark-energy density.
 - Provide small, explicit calculators (with units) and a CLI that outputs JSON.
 - Create a place to evaluate candidate mechanisms *by their assumptions* and *their observable consequences*, not by curve-fitting.
+- Integrate external LQG-inspired predictors and perform bounded parameter scans to establish empirical constraints (e.g., 150+ order mismatch demonstrated in [papers/lqg_cc_constraints](papers/lqg_cc_constraints)).
 
 ## Quick start
 

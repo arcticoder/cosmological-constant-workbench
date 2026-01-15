@@ -11,5 +11,5 @@
 *.synctex.gz
 *.toc
 
-# Optional build outputs
+# Generated PDF
 *.pdf
