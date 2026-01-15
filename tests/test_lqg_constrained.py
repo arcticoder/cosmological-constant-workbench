@@ -4,8 +4,10 @@ import pytest
 
 from ccw.integrations.lqg_constrained import (
     holographic_constrained_by_lqg,
+    holographic_constrained_by_lqg_predictor,
     holographic_constrained_by_spin_foam,
     sequestering_constrained_by_lqg,
+    sequestering_constrained_by_lqg_predictor,
     sequestering_constrained_by_spin_foam,
 )
 from ccw.integrations.lqg_predictor import lqg_predictor_available
@@ -37,8 +39,13 @@ def test_sequestering_lqg_constrained_returns_result():
     result = sequestering_constrained_by_lqg(bg)
     assert result.mechanism_name == "sequestering_lqg_constrained"
     assert result.lqg_target_rho_j_m3 > 0
-    assert "f_cancel" in result.best_fit_params
-    assert result.achieved_rho_j_m3 > 0
+    # If the target is smaller than the assumed bare vacuum, a cancellation fraction is defined.
+    # If the target exceeds the bare vacuum, this toy sequestering model cannot realize it.
+    if result.lqg_target_rho_j_m3 < result.best_fit_params.get("rho_vac_j_m3", float("inf")):
+        assert "f_cancel" in result.best_fit_params
+        assert result.achieved_rho_j_m3 > 0
+    else:
+        assert not result.success
 
 
 @pytest.mark.skipif(not lqg_predictor_available(), reason="LQG predictor not available")
@@ -49,6 +56,26 @@ def test_sequestering_lqg_constrained_extreme_tuning():
     # (should be ~120 orders of magnitude)
     assert result.residual_tuning > 100.0
     assert not result.success  # Should not claim success with such tuning
+
+
+@pytest.mark.skipif(not lqg_predictor_available(), reason="LQG predictor not available")
+def test_holographic_lqg_predictor_constrained_returns_result():
+    bg = CosmologyBackground()
+    result = holographic_constrained_by_lqg_predictor(bg, target_scale_m=1e-15)
+    assert result.mechanism_name == "holographic_lqg_predictor_constrained"
+    assert result.lqg_target_rho_j_m3 > 0
+    assert "c_factor" in result.best_fit_params
+    assert result.achieved_rho_j_m3 > 0
+
+
+@pytest.mark.skipif(not lqg_predictor_available(), reason="LQG predictor not available")
+def test_sequestering_lqg_predictor_constrained_extreme_tuning_for_planck_vacuum():
+    bg = CosmologyBackground()
+    result = sequestering_constrained_by_lqg_predictor(bg, target_scale_m=1e-15, rho_vac_j_m3=1e113)
+    assert result.mechanism_name == "sequestering_lqg_predictor_constrained"
+    assert result.lqg_target_rho_j_m3 > 0
+    assert result.residual_tuning > 100.0
+    assert not result.success
 
 
 def test_holographic_lqg_constrained_graceful_failure_without_predictor():

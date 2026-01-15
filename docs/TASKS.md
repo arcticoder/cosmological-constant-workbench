@@ -256,11 +256,18 @@ Right now: **no novel discovery** suitable for a strong paper claim.
    - ✅ Files: src/ccw/mechanisms/spin_foam_vacuum.py, tests/test_spin_foam_vacuum.py, examples/demo_spin_foam_vacuum.py.
    - ✅ Integration: predictor-independent constraint path (holographic_constrained_by_spin_foam, sequestering_constrained_by_spin_foam) added to lqg_constrained.py.
    - ✅ Demo: examples/demo_spin_foam_constrained.py shows tuning quantification using spin-foam target (works without external predictor).
-   - Remaining work:
-     - Replace toy parameterization (X, Ā scan) with actual EPRL/BC vertex amplitude calculation.
-     - Use lqg-volume-kernel-catalog or su2-3nj-* repos to compute coarse-grained transition amplitudes.
-     - Derive effective ρ_DE from spin network entropy; compare to observed ρ_Λ.
-   - Status: **Toy scaffolding functional; amplitude evaluation pending** (requires significant quantum gravity formalism investment).
+   - **Recommended hybrid next steps (before full vertex-sum effort):**
+     1) **Incorporate lqg-cosmological-constant-predictor outputs as targets**:
+        - Replace scanned (X, Ā) targets with predictor-derived ρ_vacuum / Λ_eff(ℓ) where possible.
+        - Sweep polymer μ(ℓ), golden-ratio modulation, and UQ settings; check whether default/natural inputs (γ≈0.237, μ₀~ℓ_Pl) land near observed ρ_Λ with O(1) constrained parameters.
+        - Emit a “naturalness verdict” and a no-go style bound if tuning remains unavoidable.
+     2) **Build a minimal EPRL/BC-like vertex prototype for small spins**:
+        - Use su2-3nj-* repos (closed forms + recurrences) to evaluate needed 3nj building blocks.
+        - Compute toy 4-simplex vertex amplitude for small graphs/spins; extract an effective suppression scale and compare to X≈log10(S_H).
+     3) **Parallel low-effort checks**:
+        - Unblock J.22 coupled ODE normalization (dimensionless rescaling) to enable self-consistent backreaction tracking.
+        - Run joint-likelihood sweeps with the current toy (X near horizon-entropy value) to confirm no hidden Δχ² preference emerges.
+   - Status: **Toy scaffolding functional; amplitude evaluation pending**.
 
 ---
 

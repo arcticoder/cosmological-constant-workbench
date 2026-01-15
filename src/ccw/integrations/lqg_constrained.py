@@ -24,7 +24,13 @@ from ..mechanisms import (
     SequesteringToy,
     SpinFoamVacuum,
 )
-from .lqg_predictor import LQGPredictorComparison, compare_baseline, lqg_predictor_available
+from .lqg_predictor import (
+    LQGPredictorComparison,
+    LQGPredictorFirstPrinciplesConfig,
+    compare_baseline,
+    lqg_predictor_available,
+    run_first_principles,
+)
 
 
 @dataclass(frozen=True)
@@ -98,15 +104,22 @@ def _holographic_constrained_to_target(
     is_natural = 0.3 <= best_c <= 3.0
     success = is_natural and residual_tuning < 0.0
 
+    mismatch = abs(rho_achieved - rho_target) / rho_target
     notes = (
         f"Target: {rho_target:.3e} J/m³. "
         f"Best c_factor: {best_c:.2f}. "
         f"Achieved: {rho_achieved:.3e} J/m³. "
+        f"Mismatch: {mismatch:.3e} (fraction). "
     )
     if is_natural:
-        notes += "c_factor is O(1) → no additional tuning beyond the target prediction."
+        notes += "c_factor is O(1)."
     else:
         notes += f"c_factor = {best_c:.2f} is not O(1) → residual tuning remains."
+
+    if success:
+        notes += " Achieved within <10× residual mismatch threshold."
+    else:
+        notes += " Not achieved within <10× residual mismatch threshold."
 
     return LQGConstrainedResult(
         mechanism_name=target_label,
@@ -147,10 +160,41 @@ def _sequestering_constrained_to_target(
             notes="rho_vac_j_m3 must be positive.",
         )
 
+    # SequesteringToy is a cancellation model: it can only reduce a positive bare vacuum.
+    if rho_target >= rho_vac_j_m3:
+        return LQGConstrainedResult(
+            mechanism_name=target_label,
+            lqg_target_rho_j_m3=rho_target,
+            best_fit_params={"rho_vac_j_m3": rho_vac_j_m3},
+            achieved_rho_j_m3=rho_vac_j_m3,
+            residual_tuning=float("inf"),
+            success=False,
+            notes=(
+                f"Target: {rho_target:.3e} J/m³ exceeds bare vacuum {rho_vac_j_m3:.3e} J/m³. "
+                "This sequestering toy only cancels vacuum energy; it cannot amplify it."
+            ),
+        )
+
     f_cancel_required = 1.0 - (rho_target / rho_vac_j_m3)
+    # Physical interpretation: f_cancel is a cancellation fraction, so require 0 ≤ f_cancel ≤ 1.
+    if not (0.0 <= f_cancel_required <= 1.0):
+        return LQGConstrainedResult(
+            mechanism_name=target_label,
+            lqg_target_rho_j_m3=rho_target,
+            best_fit_params={"f_cancel": f_cancel_required, "rho_vac_j_m3": rho_vac_j_m3},
+            achieved_rho_j_m3=0.0,
+            residual_tuning=float("inf"),
+            success=False,
+            notes=(
+                f"Required f_cancel={f_cancel_required:.6g} is outside [0,1]. "
+                "Treating this as non-physical for a cancellation fraction."
+            ),
+        )
+
     mech = SequesteringToy(rho_vac_j_m3=rho_vac_j_m3, rho_pt_j_m3=0.0, f_cancel=f_cancel_required)
     rho_achieved = mech.evaluate(z=0.0, bg=bg).result.rho_de_j_m3
 
+    # Residual tuning ~ log10(ρ_vac / ρ_target) when ρ_target << ρ_vac.
     residual_tuning = math.log10(rho_vac_j_m3 / rho_target)
     success = residual_tuning < 2.0
 
@@ -223,6 +267,40 @@ def holographic_constrained_by_lqg(
         bg,
         rho_target=rho_target,
         target_label="holographic_lqg_constrained",
+    )
+
+
+def holographic_constrained_by_lqg_predictor(
+    bg: CosmologyBackground,
+    *,
+    target_scale_m: float = 1e-15,
+    include_uncertainty: bool = False,
+    params_overrides: Optional[dict] = None,
+) -> LQGConstrainedResult:
+    """Find holographic c_factor matching the external predictor's vacuum-energy output."""
+    if not lqg_predictor_available():
+        return LQGConstrainedResult(
+            mechanism_name="holographic_lqg_predictor_constrained",
+            lqg_target_rho_j_m3=0.0,
+            best_fit_params={},
+            achieved_rho_j_m3=0.0,
+            residual_tuning=float("inf"),
+            success=False,
+            notes="LQG predictor not available",
+        )
+
+    fp = run_first_principles(
+        LQGPredictorFirstPrinciplesConfig(
+            target_scale_m=target_scale_m,
+            include_uncertainty=include_uncertainty,
+            params_overrides=params_overrides,
+        )
+    )
+    rho_target = fp.vacuum_energy_density_j_m3
+    return _holographic_constrained_to_target(
+        bg,
+        rho_target=rho_target,
+        target_label="holographic_lqg_predictor_constrained",
     )
 
 
@@ -301,6 +379,42 @@ def sequestering_constrained_by_lqg(
         rho_target=rho_target,
         rho_vac_j_m3=rho_vac_j_m3,
         target_label="sequestering_lqg_constrained",
+    )
+
+
+def sequestering_constrained_by_lqg_predictor(
+    bg: CosmologyBackground,
+    *,
+    target_scale_m: float = 1e-15,
+    include_uncertainty: bool = False,
+    params_overrides: Optional[dict] = None,
+    rho_vac_j_m3: float = 1e113,
+) -> LQGConstrainedResult:
+    """Find sequestering f_cancel matching the external predictor's vacuum-energy output."""
+    if not lqg_predictor_available():
+        return LQGConstrainedResult(
+            mechanism_name="sequestering_lqg_predictor_constrained",
+            lqg_target_rho_j_m3=0.0,
+            best_fit_params={},
+            achieved_rho_j_m3=0.0,
+            residual_tuning=float("inf"),
+            success=False,
+            notes="LQG predictor not available",
+        )
+
+    fp = run_first_principles(
+        LQGPredictorFirstPrinciplesConfig(
+            target_scale_m=target_scale_m,
+            include_uncertainty=include_uncertainty,
+            params_overrides=params_overrides,
+        )
+    )
+    rho_target = fp.vacuum_energy_density_j_m3
+    return _sequestering_constrained_to_target(
+        bg,
+        rho_target=rho_target,
+        rho_vac_j_m3=rho_vac_j_m3,
+        target_label="sequestering_lqg_predictor_constrained",
     )
 
 

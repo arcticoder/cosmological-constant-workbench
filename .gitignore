@@ -8,3 +8,5 @@ build/
 results/
 *.json
 *.csv
+
+papers/related/*
